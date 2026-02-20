@@ -19,7 +19,7 @@ import {
 } from 'react';
 
 import { useAppContext } from '../context/AppContext';
-import useSheetData from '../hooks/useSheetData';
+import { useSheetDataContext } from '../context/SheetDataContext';
 import {
   appendStatisticsEntry,
   getStatisticsHistory,
@@ -69,7 +69,7 @@ function DiffCell({ value, isPercent = false }: DiffCellProps) {
 
 function StatisticsPage() {
   const { state: appState, getToken } = useAppContext();
-  const { games, isLoading: gamesLoading } = useSheetData();
+  const { games, isLoading: gamesLoading } = useSheetDataContext();
   const spreadsheetId = appState.config?.spreadsheetId ?? '';
 
   const [history, setHistory] = useState<StatisticsEntry[]>([]);

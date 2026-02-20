@@ -6,6 +6,7 @@ import {
 import AppLayout from './components/Layout/AppLayout';
 import SetupModal from './components/Setup/SetupModal';
 import AppProvider, { useAppContext } from './context/AppContext';
+import { SheetDataProvider } from './context/SheetDataContext';
 import DashboardPage from './pages/DashboardPage';
 import GamesPage from './pages/GamesPage';
 import StatisticsPage from './pages/StatisticsPage';
@@ -25,16 +26,18 @@ function AppContent() {
   }
 
   return (
-    <AppLayout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/games" element={<GamesPage />} />
-        <Route path="/stores" element={<StoresPage />} />
-        <Route path="/statistics" element={<StatisticsPage />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </AppLayout>
+    <SheetDataProvider>
+      <AppLayout>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/games" element={<GamesPage />} />
+          <Route path="/stores" element={<StoresPage />} />
+          <Route path="/statistics" element={<StatisticsPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </AppLayout>
+    </SheetDataProvider>
   );
 }
 

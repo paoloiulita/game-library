@@ -26,7 +26,7 @@ import {
 import { useState } from 'react';
 
 import GameFormDialog from '../components/Games/GameFormDialog';
-import useSheetData from '../hooks/useSheetData';
+import { useSheetDataContext } from '../context/SheetDataContext';
 import type { Game } from '../types/entities';
 
 const STATE_COLORS: Record<Game['state'], 'success' | 'warning' | 'default'> = {
@@ -47,7 +47,7 @@ function GamesPage() {
     updateGame,
     deleteGame,
     clearError,
-  } = useSheetData();
+  } = useSheetDataContext();
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Game | null>(null);

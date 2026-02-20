@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from 'recharts';
 
-import useSheetData from '../hooks/useSheetData';
+import { useSheetDataContext } from '../context/SheetDataContext';
 
 // ---------------------------------------------------------------------------
 // Colours
@@ -129,7 +129,7 @@ function GamePieChart({ title, data }: GamePieChartProps) {
 function DashboardPage() {
   const {
     games, isLoading, error, clearError,
-  } = useSheetData();
+  } = useSheetDataContext();
 
   const finished = games.filter((g) => g.state === 'Finished').length;
   const putAside = games.filter((g) => g.state === 'Put Aside').length;

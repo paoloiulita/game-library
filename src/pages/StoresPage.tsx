@@ -21,7 +21,7 @@ import { useState } from 'react';
 
 import DeleteStoreDialog from '../components/Stores/DeleteStoreDialog';
 import StoreFormDialog from '../components/Stores/StoreFormDialog';
-import useSheetData from '../hooks/useSheetData';
+import { useSheetDataContext } from '../context/SheetDataContext';
 import type { Store } from '../types/entities';
 
 function StoresPage() {
@@ -36,7 +36,7 @@ function StoresPage() {
     updateStore,
     deleteStore,
     clearError,
-  } = useSheetData();
+  } = useSheetDataContext();
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Store | null>(null);
