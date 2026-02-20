@@ -404,6 +404,79 @@ export const deleteRelation = async (
   await deleteSheetRow(spreadsheetId, sheetId, rowIndex, accessToken);
 };
 
+/** Deletes ALL relations for a given store in a single batchUpdate.
+ *  Requests are sorted descending so that row indices remain valid as each
+ *  deletion is applied sequentially within the batch. */
+export const deleteRelationsForStore = async (
+  spreadsheetId: string,
+  storeId: string,
+  accessToken: string,
+): Promise<void> => {
+  const [rows, sheetId] = await Promise.all([
+    getSheetValues(spreadsheetId, SHEET_NAMES.GAME_STORE_RELATIONS, accessToken),
+    getSheetId(spreadsheetId, SHEET_NAMES.GAME_STORE_RELATIONS, accessToken),
+  ]);
+
+  // rows[0] is the header; data rows start at sheet index 1
+  const indices = rows
+    .map((row, i) => ({ row, i }))
+    .filter(({ row, i }) => i > 0 && row[1] === storeId)
+    .map(({ i }) => i)
+    .sort((a, b) => b - a); // descending
+
+  if (indices.length === 0) return;
+
+  const response = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({
+      requests: indices.map((rowIndex) => ({
+        deleteDimension: {
+          range: {
+            sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1,
+          },
+        },
+      })),
+    }),
+  });
+  await assertOk(response);
+};
+
+/** Deletes ALL relations for a given game in a single batchUpdate. */
+export const deleteRelationsForGame = async (
+  spreadsheetId: string,
+  gameId: string,
+  accessToken: string,
+): Promise<void> => {
+  const [rows, sheetId] = await Promise.all([
+    getSheetValues(spreadsheetId, SHEET_NAMES.GAME_STORE_RELATIONS, accessToken),
+    getSheetId(spreadsheetId, SHEET_NAMES.GAME_STORE_RELATIONS, accessToken),
+  ]);
+
+  const indices = rows
+    .map((row, i) => ({ row, i }))
+    .filter(({ row, i }) => i > 0 && row[0] === gameId)
+    .map(({ i }) => i)
+    .sort((a, b) => b - a);
+
+  if (indices.length === 0) return;
+
+  const response = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({
+      requests: indices.map((rowIndex) => ({
+        deleteDimension: {
+          range: {
+            sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1,
+          },
+        },
+      })),
+    }),
+  });
+  await assertOk(response);
+};
+
 // ---------------------------------------------------------------------------
 // Statistics History
 // ---------------------------------------------------------------------------

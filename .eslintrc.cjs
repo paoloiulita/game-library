@@ -31,6 +31,11 @@ module.exports = {
         alphabetize: { order: 'asc' },
       },
     ],
+    // TypeScript handles optional props — defaultProps are unnecessary
+    'react/require-default-props': 'off',
+    // Disable implicit-arrow-linebreak: it conflicts with max-len when
+    // arrow-function bodies are too long to fit on one line
+    'implicit-arrow-linebreak': 'off',
     // Allow devDependencies in config files
     'import/no-extraneous-dependencies': [
       'error',
