@@ -1,0 +1,461 @@
+import {
+  GAMES_HEADERS,
+  RELATIONS_HEADERS,
+  SHEET_NAMES,
+  SHEETS_API_BASE,
+  STATS_HEADERS,
+  STORES_HEADERS,
+} from '../config/sheets';
+import type {
+  Game, GameStoreRelation, StatisticsEntry, Store,
+} from '../types/entities';
+
+// ---------------------------------------------------------------------------
+// Internal types
+// ---------------------------------------------------------------------------
+
+interface SheetProperties {
+  sheetId: number;
+  title: string;
+}
+
+interface SpreadsheetMetadata {
+  sheets: Array<{ properties: SheetProperties }>;
+}
+
+interface ValueRange {
+  values?: string[][];
+}
+
+interface ApiErrorBody {
+  error: {
+    code: number;
+    message: string;
+    status: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const authHeaders = (accessToken: string): HeadersInit => ({
+  Authorization: `Bearer ${accessToken}`,
+  'Content-Type': 'application/json',
+});
+
+/** Throws a formatted error from a failed Sheets API response. */
+const throwApiError = (body: ApiErrorBody): never => {
+  throw new Error(`Sheets API error: ${body.error.message}`);
+};
+
+const assertOk = async (response: Response): Promise<void> => {
+  if (!response.ok) {
+    const body = (await response.json()) as ApiErrorBody;
+    throwApiError(body);
+  }
+};
+
+/** Extracts the spreadsheet ID from a full Google Sheets URL or returns the
+ *  value unchanged if it is already just an ID. */
+export const extractSpreadsheetId = (urlOrId: string): string => {
+  const match = urlOrId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return match ? match[1] : urlOrId.trim();
+};
+
+// ---------------------------------------------------------------------------
+// Low-level API wrappers
+// ---------------------------------------------------------------------------
+
+export const getSpreadsheetMetadata = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<SpreadsheetMetadata> => {
+  const response = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}`, {
+    headers: authHeaders(accessToken),
+  });
+  await assertOk(response);
+  return response.json() as Promise<SpreadsheetMetadata>;
+};
+
+export const getSheetValues = async (
+  spreadsheetId: string,
+  sheetName: string,
+  accessToken: string,
+): Promise<string[][]> => {
+  const range = encodeURIComponent(`${sheetName}!A:ZZ`);
+  const response = await fetch(
+    `${SHEETS_API_BASE}/${spreadsheetId}/values/${range}`,
+    { headers: authHeaders(accessToken) },
+  );
+  await assertOk(response);
+  const data = (await response.json()) as ValueRange;
+  return data.values ?? [];
+};
+
+export const appendSheetRow = async (
+  spreadsheetId: string,
+  sheetName: string,
+  values: string[],
+  accessToken: string,
+): Promise<void> => {
+  const range = encodeURIComponent(`${sheetName}!A:A`);
+  const response = await fetch(
+    `${SHEETS_API_BASE}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`,
+    {
+      method: 'POST',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ values: [values] }),
+    },
+  );
+  await assertOk(response);
+};
+
+/** Updates the data row at `rowIndex` (0-based, excluding the header row). */
+export const updateSheetRow = async (
+  spreadsheetId: string,
+  sheetName: string,
+  rowIndex: number,
+  values: string[],
+  accessToken: string,
+): Promise<void> => {
+  const sheetRow = rowIndex + 2; // +1 header, +1 for 1-based index
+  const range = encodeURIComponent(`${sheetName}!A${sheetRow}`);
+  const response = await fetch(
+    `${SHEETS_API_BASE}/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ values: [values] }),
+    },
+  );
+  await assertOk(response);
+};
+
+/** Deletes the data row at `rowIndex` (0-based, excluding the header row). */
+export const deleteSheetRow = async (
+  spreadsheetId: string,
+  sheetId: number,
+  rowIndex: number,
+  accessToken: string,
+): Promise<void> => {
+  const startIndex = rowIndex + 1; // +1 to skip the header row
+  const response = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex,
+              endIndex: startIndex + 1,
+            },
+          },
+        },
+      ],
+    }),
+  });
+  await assertOk(response);
+};
+
+// ---------------------------------------------------------------------------
+// Spreadsheet initialisation
+// ---------------------------------------------------------------------------
+
+/** Ensures all required sheets exist and have the correct headers.
+ *  Only creates sheets that are missing – existing ones are left untouched. */
+export const initializeSpreadsheet = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<void> => {
+  const metadata = await getSpreadsheetMetadata(spreadsheetId, accessToken);
+  const existingTitles = new Set(metadata.sheets.map((s) => s.properties.title));
+
+  const required = [
+    { name: SHEET_NAMES.GAMES, headers: GAMES_HEADERS },
+    { name: SHEET_NAMES.STORES, headers: STORES_HEADERS },
+    { name: SHEET_NAMES.GAME_STORE_RELATIONS, headers: RELATIONS_HEADERS },
+    { name: SHEET_NAMES.STATISTICS_HISTORY, headers: STATS_HEADERS },
+  ];
+
+  const toCreate = required.filter(({ name }) => !existingTitles.has(name));
+
+  if (toCreate.length === 0) return;
+
+  // Create all missing sheets in a single batchUpdate
+  const createResponse = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({
+      requests: toCreate.map(({ name }) => ({
+        addSheet: { properties: { title: name } },
+      })),
+    }),
+  });
+  await assertOk(createResponse);
+
+  // Add headers to each newly created sheet in one batchUpdate
+  const headersResponse = await fetch(
+    `${SHEETS_API_BASE}/${spreadsheetId}/values:batchUpdate`,
+    {
+      method: 'POST',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({
+        valueInputOption: 'USER_ENTERED',
+        data: toCreate.map(({ name, headers }) => ({
+          range: `${name}!A1`,
+          values: [headers],
+        })),
+      }),
+    },
+  );
+  await assertOk(headersResponse);
+};
+
+// ---------------------------------------------------------------------------
+// Entity-level helpers (used by CRUD services)
+// ---------------------------------------------------------------------------
+
+/** Returns the numeric sheetId for a named sheet tab. */
+export const getSheetId = async (
+  spreadsheetId: string,
+  sheetName: string,
+  accessToken: string,
+): Promise<number> => {
+  const metadata = await getSpreadsheetMetadata(spreadsheetId, accessToken);
+  const sheet = metadata.sheets.find((s) => s.properties.title === sheetName);
+  if (!sheet) throw new Error(`Sheet "${sheetName}" not found in spreadsheet.`);
+  return sheet.properties.sheetId;
+};
+
+// ---------------------------------------------------------------------------
+// Games
+// ---------------------------------------------------------------------------
+
+const rowToGame = (row: string[]): Game => ({
+  id: row[0] ?? '',
+  title: row[1] ?? '',
+  state: (row[2] as Game['state']) ?? 'Not Yet Played',
+});
+
+const gameToRow = (game: Game): string[] => [game.id, game.title, game.state];
+
+export const getGames = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<Game[]> => {
+  const rows = await getSheetValues(spreadsheetId, SHEET_NAMES.GAMES, accessToken);
+  return rows.slice(1).map(rowToGame); // skip header row
+};
+
+export const createGame = async (
+  spreadsheetId: string,
+  game: Game,
+  accessToken: string,
+): Promise<void> => {
+  await appendSheetRow(spreadsheetId, SHEET_NAMES.GAMES, gameToRow(game), accessToken);
+};
+
+export const updateGame = async (
+  spreadsheetId: string,
+  game: Game,
+  accessToken: string,
+): Promise<void> => {
+  const rows = await getSheetValues(spreadsheetId, SHEET_NAMES.GAMES, accessToken);
+  const dataRows = rows.slice(1);
+  const rowIndex = dataRows.findIndex((r) => r[0] === game.id);
+  if (rowIndex === -1) throw new Error(`Game with id "${game.id}" not found.`);
+  await updateSheetRow(
+    spreadsheetId,
+    SHEET_NAMES.GAMES,
+    rowIndex,
+    gameToRow(game),
+    accessToken,
+  );
+};
+
+export const deleteGame = async (
+  spreadsheetId: string,
+  gameId: string,
+  accessToken: string,
+): Promise<void> => {
+  const [rows, sheetId] = await Promise.all([
+    getSheetValues(spreadsheetId, SHEET_NAMES.GAMES, accessToken),
+    getSheetId(spreadsheetId, SHEET_NAMES.GAMES, accessToken),
+  ]);
+  const dataRows = rows.slice(1);
+  const rowIndex = dataRows.findIndex((r) => r[0] === gameId);
+  if (rowIndex === -1) throw new Error(`Game with id "${gameId}" not found.`);
+  await deleteSheetRow(spreadsheetId, sheetId, rowIndex, accessToken);
+};
+
+// ---------------------------------------------------------------------------
+// Stores
+// ---------------------------------------------------------------------------
+
+const rowToStore = (row: string[]): Store => ({
+  id: row[0] ?? '',
+  name: row[1] ?? '',
+});
+
+const storeToRow = (store: Store): string[] => [store.id, store.name];
+
+export const getStores = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<Store[]> => {
+  const rows = await getSheetValues(spreadsheetId, SHEET_NAMES.STORES, accessToken);
+  return rows.slice(1).map(rowToStore);
+};
+
+export const createStore = async (
+  spreadsheetId: string,
+  store: Store,
+  accessToken: string,
+): Promise<void> => {
+  await appendSheetRow(spreadsheetId, SHEET_NAMES.STORES, storeToRow(store), accessToken);
+};
+
+export const updateStore = async (
+  spreadsheetId: string,
+  store: Store,
+  accessToken: string,
+): Promise<void> => {
+  const rows = await getSheetValues(spreadsheetId, SHEET_NAMES.STORES, accessToken);
+  const dataRows = rows.slice(1);
+  const rowIndex = dataRows.findIndex((r) => r[0] === store.id);
+  if (rowIndex === -1) throw new Error(`Store with id "${store.id}" not found.`);
+  await updateSheetRow(
+    spreadsheetId,
+    SHEET_NAMES.STORES,
+    rowIndex,
+    storeToRow(store),
+    accessToken,
+  );
+};
+
+export const deleteStore = async (
+  spreadsheetId: string,
+  storeId: string,
+  accessToken: string,
+): Promise<void> => {
+  const [rows, sheetId] = await Promise.all([
+    getSheetValues(spreadsheetId, SHEET_NAMES.STORES, accessToken),
+    getSheetId(spreadsheetId, SHEET_NAMES.STORES, accessToken),
+  ]);
+  const dataRows = rows.slice(1);
+  const rowIndex = dataRows.findIndex((r) => r[0] === storeId);
+  if (rowIndex === -1) throw new Error(`Store with id "${storeId}" not found.`);
+  await deleteSheetRow(spreadsheetId, sheetId, rowIndex, accessToken);
+};
+
+// ---------------------------------------------------------------------------
+// Game-Store Relations
+// ---------------------------------------------------------------------------
+
+const rowToRelation = (row: string[]): GameStoreRelation => ({
+  gameId: row[0] ?? '',
+  storeId: row[1] ?? '',
+});
+
+export const getRelations = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<GameStoreRelation[]> => {
+  const rows = await getSheetValues(
+    spreadsheetId,
+    SHEET_NAMES.GAME_STORE_RELATIONS,
+    accessToken,
+  );
+  return rows.slice(1).map(rowToRelation);
+};
+
+export const createRelation = async (
+  spreadsheetId: string,
+  relation: GameStoreRelation,
+  accessToken: string,
+): Promise<void> => {
+  await appendSheetRow(
+    spreadsheetId,
+    SHEET_NAMES.GAME_STORE_RELATIONS,
+    [relation.gameId, relation.storeId],
+    accessToken,
+  );
+};
+
+export const deleteRelation = async (
+  spreadsheetId: string,
+  gameId: string,
+  storeId: string,
+  accessToken: string,
+): Promise<void> => {
+  const [rows, sheetId] = await Promise.all([
+    getSheetValues(spreadsheetId, SHEET_NAMES.GAME_STORE_RELATIONS, accessToken),
+    getSheetId(spreadsheetId, SHEET_NAMES.GAME_STORE_RELATIONS, accessToken),
+  ]);
+  const dataRows = rows.slice(1);
+  const rowIndex = dataRows.findIndex(
+    (r) => r[0] === gameId && r[1] === storeId,
+  );
+  if (rowIndex === -1) throw new Error('Game-store relation not found.');
+  await deleteSheetRow(spreadsheetId, sheetId, rowIndex, accessToken);
+};
+
+// ---------------------------------------------------------------------------
+// Statistics History
+// ---------------------------------------------------------------------------
+
+const rowToEntry = (row: string[]): StatisticsEntry => ({
+  date: row[0] ?? '',
+  finished: Number(row[1] ?? 0),
+  diffFinished: row[2] !== undefined && row[2] !== '' ? Number(row[2]) : null,
+  putAside: Number(row[3] ?? 0),
+  diffPutAside: row[4] !== undefined && row[4] !== '' ? Number(row[4]) : null,
+  notYetPlayed: Number(row[5] ?? 0),
+  diffNotYetPlayed: row[6] !== undefined && row[6] !== '' ? Number(row[6]) : null,
+  total: Number(row[7] ?? 0),
+  percentNotYetPlayed: Number(row[8] ?? 0),
+  diffPercentNotYetPlayed:
+    row[9] !== undefined && row[9] !== '' ? Number(row[9]) : null,
+});
+
+const entryToRow = (entry: StatisticsEntry): string[] => [
+  entry.date,
+  String(entry.finished),
+  entry.diffFinished !== null ? String(entry.diffFinished) : '',
+  String(entry.putAside),
+  entry.diffPutAside !== null ? String(entry.diffPutAside) : '',
+  String(entry.notYetPlayed),
+  entry.diffNotYetPlayed !== null ? String(entry.diffNotYetPlayed) : '',
+  String(entry.total),
+  String(entry.percentNotYetPlayed),
+  entry.diffPercentNotYetPlayed !== null ? String(entry.diffPercentNotYetPlayed) : '',
+];
+
+export const getStatisticsHistory = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<StatisticsEntry[]> => {
+  const rows = await getSheetValues(
+    spreadsheetId,
+    SHEET_NAMES.STATISTICS_HISTORY,
+    accessToken,
+  );
+  return rows.slice(1).map(rowToEntry);
+};
+
+export const appendStatisticsEntry = async (
+  spreadsheetId: string,
+  entry: StatisticsEntry,
+  accessToken: string,
+): Promise<void> => {
+  await appendSheetRow(
+    spreadsheetId,
+    SHEET_NAMES.STATISTICS_HISTORY,
+    entryToRow(entry),
+    accessToken,
+  );
+};
