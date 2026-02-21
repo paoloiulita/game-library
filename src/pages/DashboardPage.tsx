@@ -136,7 +136,7 @@ function GamePieChart({ title, data }: GamePieChartProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number, name: string) => [value, name]}
+              formatter={(value: number, name: string): [number, string] => [value, name]}
             />
             <Legend />
           </PieChart>
