@@ -1,11 +1,17 @@
-# 🎮 Game Library Manager
+# Game Library Manager
 
 A personal video game collection tracker that lives entirely in your browser.
 Your data is stored in a **Google Spreadsheet** you own — no server, no database, no subscription.
 
 ---
 
-## Features
+## For Users
+
+### Try it
+
+**[https://paoloiulita.github.io/game-library/](https://paoloiulita.github.io/game-library/)**
+
+### Features
 
 - **Games** — track every title with one of three states: *Finished*, *Put Aside*, *Not Yet Played*
 - **Stores** — organise your collection by platform or store; many-to-many relationships supported
@@ -13,16 +19,14 @@ Your data is stored in a **Google Spreadsheet** you own — no server, no databa
 - **Statistics** — manual snapshots of your collection counts with delta indicators between entries
 - **Alphabetical index** — jump to any letter instantly in large collections
 
----
+### First-time setup
 
-## First-time Setup
-
-### 1 — Create a Google Cloud project
+#### 1 — Create a Google Cloud project
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project (or select an existing one).
 2. Navigate to **APIs & Services → Library**, search for **Google Sheets API** and click **Enable**.
 
-### 2 — Configure the OAuth consent screen
+#### 2 — Configure the OAuth consent screen
 
 1. Go to **APIs & Services → OAuth consent screen**.
 2. Choose **External** as the user type (unless you have a Google Workspace organisation).
@@ -31,57 +35,26 @@ Your data is stored in a **Google Spreadsheet** you own — no server, no databa
 5. Under **Test users**, add your own Google account.
 6. Save and continue.
 
-### 3 — Create an OAuth 2.0 Client ID
+#### 3 — Create an OAuth 2.0 Client ID
 
 1. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
 2. Set the application type to **Web application**.
-3. Under **Authorised JavaScript origins**, add the URL where you run the app:
-   - Local development: `http://localhost:5173`
-   - Production: your deployed domain
+3. Under **Authorised JavaScript origins**, add `https://paoloiulita.github.io`.
 4. Click **Create** and copy the **Client ID** (format: `xxxxxx.apps.googleusercontent.com`).
 
 > No redirect URIs are needed — the app uses the OAuth 2.0 token model (implicit flow).
 
-### 4 — Create a Google Spreadsheet
+#### 4 — Create a Google Spreadsheet
 
 1. Go to [sheets.google.com](https://sheets.google.com) and create a blank spreadsheet.
 2. Copy the spreadsheet's URL (or just the ID — the long string between `/d/` and `/edit` in the URL).
 
 > The app will automatically create all required sheets and headers on first sign-in.
 
-### 5 — Launch the app
+#### 5 — Open the app
 
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173).
+Visit [https://paoloiulita.github.io/game-library/](https://paoloiulita.github.io/game-library/).
 On first load a setup dialog appears — paste your **Client ID** and **Spreadsheet URL**, then click **Sign In with Google**.
-
----
-
-## Migrating existing data
-
-If you already have a collection in a spreadsheet, two Google Apps Scripts are available to migrate your data without manual entry. Paste each script into your source spreadsheet via **Extensions → Apps Script**, set the constants at the top, and run.
-
-### Collection migration (Games, Stores, Relations)
-
-Expected source layout:
-
-| A | B | C | D → M |
-|---|---|---|-------|
-| Finished ✓ | Put Aside ✓ | Title | Store columns (X = owned) |
-
-### Statistics history migration
-
-Expected source layout:
-
-| D | E | F | G | H | I | J | K | L | M |
-|---|---|---|---|---|---|---|---|---|---|
-| Date (month/year) | Finished | Δ Finished | Put Aside | Δ Put Aside | Not Yet Played | Δ Not Yet Played | Total | % Not Yet Played | Δ % Not Yet Played |
-
-Dates are stored as ISO strings (`2024-01-01T00:00:00.000Z`) — the day is always the 1st and the time is always midnight UTC.
 
 ---
 
@@ -140,6 +113,15 @@ src/
     └── google.d.ts     # GIS ambient declarations
 ```
 
+### Local development setup
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173). Follow the same first-time setup steps above, adding `http://localhost:5173` as an additional **Authorised JavaScript origin** in your OAuth client.
+
 ### Available commands
 
 | Command | Description |
@@ -152,3 +134,7 @@ src/
 | `npm run type-check` | Run `tsc --noEmit` without building |
 
 > The pre-commit hook runs `eslint --fix` and `tsc --noEmit` automatically on every staged `.ts` / `.tsx` file via Husky + lint-staged.
+
+### Deployment
+
+The app is deployed to GitHub Pages via GitHub Actions on every push to `main`. The workflow builds the project and uploads the `dist/` folder as a Pages artifact. SPA routing on GitHub Pages is handled by a `public/404.html` that encodes the requested path into `sessionStorage` and redirects to the root, where `index.html` restores it before React Router initialises.
