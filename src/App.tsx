@@ -46,7 +46,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AppProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <AppContent />
         </BrowserRouter>
       </AppProvider>
