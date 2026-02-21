@@ -10,6 +10,7 @@ export interface Game {
   id: string;
   title: string;
   state: GameState;
+  isWishlist: boolean;
 }
 
 export interface Store {

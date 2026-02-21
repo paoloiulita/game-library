@@ -67,7 +67,7 @@ function DiffCell({ value, isPercent = false }: DiffCellProps) {
 function StatisticsPage() {
   const { state: appState, getToken } = useAppContext();
   const {
-    games,
+    ownedGames,
     isLoading: gamesLoading,
     statisticsHistory,
     isHistoryLoading,
@@ -88,10 +88,10 @@ function StatisticsPage() {
     try {
       const token = await getToken();
 
-      const finished = games.filter((g) => g.state === 'Finished').length;
-      const putAside = games.filter((g) => g.state === 'Put Aside').length;
-      const notYetPlayed = games.filter((g) => g.state === 'Not Yet Played').length;
-      const total = games.length;
+      const finished = ownedGames.filter((g) => g.state === 'Finished').length;
+      const putAside = ownedGames.filter((g) => g.state === 'Put Aside').length;
+      const notYetPlayed = ownedGames.filter((g) => g.state === 'Not Yet Played').length;
+      const total = ownedGames.length;
       const percentNotYetPlayed = total > 0
         ? Math.round((notYetPlayed / total) * 1000) / 10
         : 0;

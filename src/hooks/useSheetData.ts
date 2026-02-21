@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback, useEffect, useMemo, useState,
+} from 'react';
 
 import { useAppContext } from '../context/AppContext';
 import {
@@ -32,6 +34,10 @@ interface SheetDataState {
 }
 
 export interface UseSheetDataReturn extends SheetDataState {
+  /** All owned (non-wishlist) games. */
+  ownedGames: Game[];
+  /** All wishlisted games. */
+  wishlistGames: Game[];
   /** Reload games/stores/relations from the spreadsheet. */
   refresh: () => Promise<void>;
   /** Reload statistics history from the spreadsheet. */
@@ -41,8 +47,10 @@ export interface UseSheetDataReturn extends SheetDataState {
   /** Derived: games that exist only on the given store (would become orphaned on deletion). */
   getGamesOnlyOnStore: (storeId: string) => Game[];
   createGame: (title: string, state: GameState, storeIds: string[]) => Promise<void>;
+  createWishlistGame: (title: string, storeIds: string[]) => Promise<void>;
   updateGame: (game: Game, newStoreIds: string[]) => Promise<void>;
   deleteGame: (gameId: string) => Promise<void>;
+  markAsBought: (gameId: string, purchasedStoreIds: string[]) => Promise<void>;
   createStore: (name: string) => Promise<void>;
   updateStore: (store: Store) => Promise<void>;
   deleteStore: (storeId: string) => Promise<void>;
@@ -180,6 +188,27 @@ function useSheetData(): UseSheetDataReturn {
           id: crypto.randomUUID(),
           title,
           state: gameState,
+          isWishlist: false,
+        };
+        await apiCreateGame(spreadsheetId, newGame, token);
+        await Promise.all(
+          storeIds.map((storeId) =>
+            createRelation(spreadsheetId, { gameId: newGame.id, storeId }, token)),
+        );
+      });
+    },
+    [spreadsheetId, getToken, operate],
+  );
+
+  const createWishlistGame = useCallback(
+    async (title: string, storeIds: string[]): Promise<void> => {
+      await operate(async () => {
+        const token = await getToken();
+        const newGame: Game = {
+          id: crypto.randomUUID(),
+          title,
+          state: 'Not Yet Played',
+          isWishlist: true,
         };
         await apiCreateGame(spreadsheetId, newGame, token);
         await Promise.all(
@@ -216,6 +245,24 @@ function useSheetData(): UseSheetDataReturn {
       });
     },
     [spreadsheetId, getToken, operate],
+  );
+
+  const markAsBought = useCallback(
+    async (gameId: string, purchasedStoreIds: string[]): Promise<void> => {
+      await operate(async () => {
+        const token = await getToken();
+        const game = data.games.find((g) => g.id === gameId);
+        if (!game) throw new Error(`Game with id "${gameId}" not found.`);
+        const updatedGame: Game = { ...game, isWishlist: false, state: 'Not Yet Played' };
+        await apiUpdateGame(spreadsheetId, updatedGame, token);
+        await deleteRelationsForGame(spreadsheetId, gameId, token);
+        await Promise.all(
+          purchasedStoreIds.map((storeId) =>
+            createRelation(spreadsheetId, { gameId, storeId }, token)),
+        );
+      });
+    },
+    [spreadsheetId, getToken, operate, data.games],
   );
 
   // ---------------------------------------------------------------------------
@@ -258,6 +305,16 @@ function useSheetData(): UseSheetDataReturn {
   // Derived helpers
   // ---------------------------------------------------------------------------
 
+  const ownedGames = useMemo(
+    () => data.games.filter((g) => !g.isWishlist),
+    [data.games],
+  );
+
+  const wishlistGames = useMemo(
+    () => data.games.filter((g) => g.isWishlist),
+    [data.games],
+  );
+
   const getStoreIdsForGame = useCallback(
     (gameId: string): string[] =>
       data.relations.filter((r) => r.gameId === gameId).map((r) => r.storeId),
@@ -284,13 +341,17 @@ function useSheetData(): UseSheetDataReturn {
 
   return {
     ...data,
+    ownedGames,
+    wishlistGames,
     refresh,
     refreshHistory,
     getStoreIdsForGame,
     getGamesOnlyOnStore,
     createGame,
+    createWishlistGame,
     updateGame,
     deleteGame,
+    markAsBought,
     createStore,
     updateStore,
     deleteStore,

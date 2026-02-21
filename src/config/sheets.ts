@@ -9,7 +9,7 @@ export const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 
 export const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
-export const GAMES_HEADERS = ['ID', 'Title', 'State'];
+export const GAMES_HEADERS = ['ID', 'Title', 'State', 'IsWishlist'];
 export const STORES_HEADERS = ['ID', 'Name'];
 export const RELATIONS_HEADERS = ['GameID', 'StoreID'];
 export const STATS_HEADERS = [

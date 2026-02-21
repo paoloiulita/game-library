@@ -50,7 +50,7 @@ const STATE_COLORS: Record<Game['state'], 'success' | 'warning' | 'default'> = {
 
 function GamesPage() {
   const {
-    games,
+    ownedGames,
     stores,
     isLoading,
     isOperating,
@@ -71,17 +71,19 @@ function GamesPage() {
   const isSearching = searchQuery.length >= 3;
 
   const availableLetters = useMemo(
-    () => new Set(games.map((g) => getLetterGroup(g.title))),
-    [games],
+    () => new Set(ownedGames.map((g) => getLetterGroup(g.title))),
+    [ownedGames],
   );
 
   const filteredGames = useMemo(() => {
     if (isSearching) {
       const q = searchQuery.toLowerCase();
-      return games.filter((g) => g.title.toLowerCase().includes(q));
+      return ownedGames.filter((g) => g.title.toLowerCase().includes(q));
     }
-    return activeLetter ? games.filter((g) => getLetterGroup(g.title) === activeLetter) : games;
-  }, [games, activeLetter, searchQuery, isSearching]);
+    return activeLetter
+      ? ownedGames.filter((g) => getLetterGroup(g.title) === activeLetter)
+      : ownedGames;
+  }, [ownedGames, activeLetter, searchQuery, isSearching]);
 
   const handleSearchChange = (value: string): void => {
     setSearchQuery(value);
@@ -168,7 +170,7 @@ function GamesPage() {
       )}
 
       {/* Alphabetical index */}
-      {games.length > 0 && (
+      {ownedGames.length > 0 && (
         <Box sx={{
           display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2,
         }}
@@ -197,7 +199,7 @@ function GamesPage() {
         </Box>
       )}
 
-      {games.length === 0 ? (
+      {ownedGames.length === 0 ? (
         <Typography color="text.secondary">No games yet. Add your first game!</Typography>
       ) : (
         <TableContainer component={Paper}>

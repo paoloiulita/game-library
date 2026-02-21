@@ -233,13 +233,13 @@ function buildHistoryCharts(history: StatisticsEntry[]) {
 
 function DashboardPage() {
   const {
-    games, isLoading, error, clearError, statisticsHistory,
+    ownedGames, isLoading, error, clearError, statisticsHistory,
   } = useSheetDataContext();
 
-  const finished = games.filter((g) => g.state === 'Finished').length;
-  const putAside = games.filter((g) => g.state === 'Put Aside').length;
-  const notYetPlayed = games.filter((g) => g.state === 'Not Yet Played').length;
-  const total = games.length;
+  const finished = ownedGames.filter((g) => g.state === 'Finished').length;
+  const putAside = ownedGames.filter((g) => g.state === 'Put Aside').length;
+  const notYetPlayed = ownedGames.filter((g) => g.state === 'Not Yet Played').length;
+  const total = ownedGames.length;
 
   const globalData: ChartEntry[] = [
     { name: 'Finished', value: finished },

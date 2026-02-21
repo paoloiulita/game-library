@@ -165,8 +165,30 @@ export const deleteSheetRow = async (
 // Spreadsheet initialisation
 // ---------------------------------------------------------------------------
 
+/** Adds the IsWishlist header to an existing Games sheet that pre-dates the
+ *  Wishlist feature. Safe to call on already-migrated sheets (no-op). */
+const migrateGamesSchema = async (
+  spreadsheetId: string,
+  accessToken: string,
+): Promise<void> => {
+  const rows = await getSheetValues(spreadsheetId, SHEET_NAMES.GAMES, accessToken);
+  const header = rows[0] ?? [];
+  if (header[3] === 'IsWishlist') return; // already up to date
+  const range = encodeURIComponent(`${SHEET_NAMES.GAMES}!A1`);
+  const response = await fetch(
+    `${SHEETS_API_BASE}/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ values: [GAMES_HEADERS] }),
+    },
+  );
+  await assertOk(response);
+};
+
 /** Ensures all required sheets exist and have the correct headers.
- *  Only creates sheets that are missing – existing ones are left untouched. */
+ *  Only creates sheets that are missing – existing ones are left untouched.
+ *  Also runs lightweight schema migrations (e.g. adding IsWishlist column). */
 export const initializeSpreadsheet = async (
   spreadsheetId: string,
   accessToken: string,
@@ -182,6 +204,12 @@ export const initializeSpreadsheet = async (
   ];
 
   const toCreate = required.filter(({ name }) => !existingTitles.has(name));
+
+  // Run schema migrations on existing sheets regardless of whether new ones
+  // need to be created (Games sheet may pre-date the IsWishlist column).
+  if (existingTitles.has(SHEET_NAMES.GAMES)) {
+    await migrateGamesSchema(spreadsheetId, accessToken);
+  }
 
   if (toCreate.length === 0) return;
 
@@ -239,9 +267,13 @@ const rowToGame = (row: string[]): Game => ({
   id: row[0] ?? '',
   title: row[1] ?? '',
   state: (row[2] as Game['state']) ?? 'Not Yet Played',
+  // Column D is absent on rows written before the Wishlist feature → default false
+  isWishlist: row[3]?.toUpperCase() === 'TRUE',
 });
 
-const gameToRow = (game: Game): string[] => [game.id, game.title, game.state];
+const gameToRow = (game: Game): string[] => [
+  game.id, game.title, game.state, game.isWishlist ? 'TRUE' : 'FALSE',
+];
 
 export const getGames = async (
   spreadsheetId: string,
