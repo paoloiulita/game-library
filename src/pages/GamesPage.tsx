@@ -62,7 +62,7 @@ function GamesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Game | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null);
-  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  const [activeLetter, setActiveLetter] = useState<string | null>('A');
 
   const availableLetters = useMemo(
     () => new Set(games.map((g) => getLetterGroup(g.title))),
@@ -133,6 +133,14 @@ function GamesPage() {
           display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2,
         }}
         >
+          <Button
+            size="small"
+            variant={activeLetter === null ? 'contained' : 'outlined'}
+            onClick={() => setActiveLetter(null)}
+            sx={{ minWidth: 52, px: 1 }}
+          >
+            See All
+          </Button>
           {LETTERS.map((letter) => (
             <Button
               key={letter}
