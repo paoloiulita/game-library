@@ -23,11 +23,21 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import GameFormDialog from '../components/Games/GameFormDialog';
 import { useSheetDataContext } from '../context/SheetDataContext';
 import type { Game } from '../types/entities';
+
+const LETTERS = [
+  'Other',
+  ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)),
+];
+
+const getLetterGroup = (title: string): string => {
+  const ch = title.charAt(0).toUpperCase();
+  return /^[A-Z]$/.test(ch) ? ch : 'Other';
+};
 
 const STATE_COLORS: Record<Game['state'], 'success' | 'warning' | 'default'> = {
   Finished: 'success',
@@ -52,6 +62,17 @@ function GamesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Game | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null);
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+
+  const availableLetters = useMemo(
+    () => new Set(games.map((g) => getLetterGroup(g.title))),
+    [games],
+  );
+
+  const filteredGames = useMemo(
+    () => (activeLetter ? games.filter((g) => getLetterGroup(g.title) === activeLetter) : games),
+    [games, activeLetter],
+  );
 
   const handleAddSubmit = async (title: string, state: Game['state'], storeIds: string[]): Promise<void> => {
     await createGame(title, state, storeIds);
@@ -106,6 +127,27 @@ function GamesPage() {
         </Alert>
       )}
 
+      {/* Alphabetical index */}
+      {games.length > 0 && (
+        <Box sx={{
+          display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2,
+        }}
+        >
+          {LETTERS.map((letter) => (
+            <Button
+              key={letter}
+              size="small"
+              variant={activeLetter === letter ? 'contained' : 'outlined'}
+              onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
+              disabled={!availableLetters.has(letter)}
+              sx={{ minWidth: 36, px: 1 }}
+            >
+              {letter}
+            </Button>
+          ))}
+        </Box>
+      )}
+
       {games.length === 0 ? (
         <Typography color="text.secondary">No games yet. Add your first game!</Typography>
       ) : (
@@ -120,7 +162,7 @@ function GamesPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {games.map((game) => {
+              {filteredGames.map((game) => {
                 const storeIds = getStoreIdsForGame(game.id);
                 return (
                   <TableRow key={game.id} hover>
