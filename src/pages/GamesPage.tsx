@@ -86,11 +86,12 @@ function GamesPage() {
   const handleSearchChange = (value: string): void => {
     setSearchQuery(value);
     if (value.length >= 3) setActiveLetter(null);
+    else setActiveLetter('A');
   };
 
   const handleClearSearch = (): void => {
     setSearchQuery('');
-    setActiveLetter(null);
+    setActiveLetter('A');
   };
 
   const handleAddSubmit = async (title: string, state: Game['state'], storeIds: string[]): Promise<void> => {
