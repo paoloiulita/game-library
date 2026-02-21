@@ -14,16 +14,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import {
-  type ReactNode, useCallback, useEffect, useState,
-} from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { useAppContext } from '../context/AppContext';
 import { useSheetDataContext } from '../context/SheetDataContext';
-import {
-  appendStatisticsEntry,
-  getStatisticsHistory,
-} from '../services/sheetsApi';
+import { appendStatisticsEntry } from '../services/sheetsApi';
 import type { StatisticsEntry } from '../types/entities';
 
 // ---------------------------------------------------------------------------
@@ -71,35 +66,17 @@ function DiffCell({ value, isPercent = false }: DiffCellProps) {
 
 function StatisticsPage() {
   const { state: appState, getToken } = useAppContext();
-  const { games, isLoading: gamesLoading } = useSheetDataContext();
+  const {
+    games,
+    isLoading: gamesLoading,
+    statisticsHistory,
+    isHistoryLoading,
+    refreshHistory,
+  } = useSheetDataContext();
   const spreadsheetId = appState.config?.spreadsheetId ?? '';
 
-  const [history, setHistory] = useState<StatisticsEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // ---------------------------------------------------------------------------
-  // Load history
-  // ---------------------------------------------------------------------------
-
-  const loadHistory = useCallback(async (): Promise<void> => {
-    if (!spreadsheetId) return;
-    try {
-      const token = await getToken();
-      const entries = await getStatisticsHistory(spreadsheetId, token);
-      // Reverse so newest is at the top of the table
-      setHistory([...entries].reverse());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load history.');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [spreadsheetId, getToken]);
-
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
 
   // ---------------------------------------------------------------------------
   // Snapshot generation
@@ -116,12 +93,13 @@ function StatisticsPage() {
       const notYetPlayed = games.filter((g) => g.state === 'Not Yet Played').length;
       const total = games.length;
       const percentNotYetPlayed = total > 0
-        ? Math.round((notYetPlayed / total) * 1000) / 10 // 1 decimal
+        ? Math.round((notYetPlayed / total) * 1000) / 10
         : 0;
 
-      // The "previous" entry is the most recent stored snapshot (top of the
-      // reversed array = index 0)
-      const prev = history[0] ?? null;
+      // Most recent stored snapshot is the last entry (chronological order)
+      const prev = statisticsHistory.length > 0
+        ? statisticsHistory[statisticsHistory.length - 1]
+        : null;
 
       const entry: StatisticsEntry = {
         date: new Date().toISOString(),
@@ -139,7 +117,7 @@ function StatisticsPage() {
       };
 
       await appendStatisticsEntry(spreadsheetId, entry, token);
-      await loadHistory();
+      await refreshHistory();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate snapshot.');
     } finally {
@@ -151,7 +129,9 @@ function StatisticsPage() {
   // Render
   // ---------------------------------------------------------------------------
 
-  const isPageLoading = gamesLoading || historyLoading;
+  const isPageLoading = gamesLoading || isHistoryLoading;
+  // Display newest first
+  const historyNewestFirst = [...statisticsHistory].reverse();
 
   let bodyContent: ReactNode;
   if (isPageLoading) {
@@ -160,7 +140,7 @@ function StatisticsPage() {
         <CircularProgress />
       </Box>
     );
-  } else if (history.length === 0) {
+  } else if (historyNewestFirst.length === 0) {
     bodyContent = (
       <Typography color="text.secondary">
         No snapshots yet. Click
@@ -189,7 +169,7 @@ function StatisticsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {history.map((entry, index) => (
+            {historyNewestFirst.map((entry, index) => (
               // eslint-disable-next-line react/no-array-index-key
               <TableRow key={`${entry.date}-${index}`} hover>
                 <TableCell>{formatDate(entry.date)}</TableCell>

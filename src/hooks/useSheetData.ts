@@ -11,26 +11,31 @@ import {
   deleteStore as apiDeleteStore,
   getGames,
   getRelations,
+  getStatisticsHistory,
   getStores,
   updateGame as apiUpdateGame,
   updateStore as apiUpdateStore,
 } from '../services/sheetsApi';
 import type {
-  Game, GameState, GameStoreRelation, Store,
+  Game, GameState, GameStoreRelation, StatisticsEntry, Store,
 } from '../types/entities';
 
 interface SheetDataState {
   games: Game[];
   stores: Store[];
   relations: GameStoreRelation[];
+  statisticsHistory: StatisticsEntry[];
   isLoading: boolean;
+  isHistoryLoading: boolean;
   isOperating: boolean;
   error: string | null;
 }
 
 export interface UseSheetDataReturn extends SheetDataState {
-  /** Reload all data from the spreadsheet. */
+  /** Reload games/stores/relations from the spreadsheet. */
   refresh: () => Promise<void>;
+  /** Reload statistics history from the spreadsheet. */
+  refreshHistory: () => Promise<void>;
   /** Derived: store IDs associated with a game. */
   getStoreIdsForGame: (gameId: string) => string[];
   /** Derived: games that exist only on the given store (would become orphaned on deletion). */
@@ -48,7 +53,9 @@ const initialState: SheetDataState = {
   games: [],
   stores: [],
   relations: [],
+  statisticsHistory: [],
   isLoading: true,
+  isHistoryLoading: true,
   isOperating: false,
   error: null,
 };
@@ -73,15 +80,27 @@ function useSheetData(): UseSheetDataReturn {
         getStores(spreadsheetId, token),
         getRelations(spreadsheetId, token),
       ]);
-      setData({
-        games, stores, relations, isLoading: false, isOperating: false, error: null,
-      });
+      setData((prev) => ({
+        ...prev, games, stores, relations, isLoading: false, isOperating: false, error: null,
+      }));
     } catch (err) {
       setData((prev) => ({
         ...prev,
         isLoading: false,
         error: err instanceof Error ? err.message : 'Failed to load data.',
       }));
+    }
+  }, [spreadsheetId, getToken]);
+
+  const refreshHistory = useCallback(async (): Promise<void> => {
+    if (!spreadsheetId) return;
+    setData((prev) => ({ ...prev, isHistoryLoading: true }));
+    try {
+      const token = await getToken();
+      const statisticsHistory = await getStatisticsHistory(spreadsheetId, token);
+      setData((prev) => ({ ...prev, statisticsHistory, isHistoryLoading: false }));
+    } catch {
+      setData((prev) => ({ ...prev, isHistoryLoading: false }));
     }
   }, [spreadsheetId, getToken]);
 
@@ -92,14 +111,22 @@ function useSheetData(): UseSheetDataReturn {
       if (!spreadsheetId) return;
       try {
         const token = await getToken();
-        const [games, stores, relations] = await Promise.all([
+        const [games, stores, relations, statisticsHistory] = await Promise.all([
           getGames(spreadsheetId, token),
           getStores(spreadsheetId, token),
           getRelations(spreadsheetId, token),
+          getStatisticsHistory(spreadsheetId, token),
         ]);
         if (active) {
           setData({
-            games, stores, relations, isLoading: false, isOperating: false, error: null,
+            games,
+            stores,
+            relations,
+            statisticsHistory,
+            isLoading: false,
+            isHistoryLoading: false,
+            isOperating: false,
+            error: null,
           });
         }
       } catch (err) {
@@ -107,6 +134,7 @@ function useSheetData(): UseSheetDataReturn {
           setData((prev) => ({
             ...prev,
             isLoading: false,
+            isHistoryLoading: false,
             error: err instanceof Error ? err.message : 'Failed to load data.',
           }));
         }
@@ -257,6 +285,7 @@ function useSheetData(): UseSheetDataReturn {
   return {
     ...data,
     refresh,
+    refreshHistory,
     getStoreIdsForGame,
     getGamesOnlyOnStore,
     createGame,
