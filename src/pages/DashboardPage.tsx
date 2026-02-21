@@ -135,9 +135,7 @@ function GamePieChart({ title, data }: GamePieChartProps) {
                 <Cell key={entry.name} fill={STATE_COLORS[entry.name] ?? '#90a4ae'} />
               ))}
             </Pie>
-            <Tooltip
-              formatter={(value: number, name: string): [number, string] => [value, name]}
-            />
+            <Tooltip />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
