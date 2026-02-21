@@ -11,6 +11,7 @@ import DashboardPage from './pages/DashboardPage';
 import GamesPage from './pages/GamesPage';
 import StatisticsPage from './pages/StatisticsPage';
 import StoresPage from './pages/StoresPage';
+import WishlistPage from './pages/WishlistPage';
 
 const theme = createTheme({
   palette: {
@@ -32,6 +33,7 @@ function AppContent() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/games" element={<GamesPage />} />
+          <Route path="/wishlist" element={<WishlistPage />} />
           <Route path="/stores" element={<StoresPage />} />
           <Route path="/statistics" element={<StatisticsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

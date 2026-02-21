@@ -1,4 +1,5 @@
 import BarChartIcon from '@mui/icons-material/BarChart';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -36,6 +37,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Games', path: '/games', icon: <SportsEsportsIcon /> },
+  { label: 'Wishlist', path: '/wishlist', icon: <BookmarkIcon /> },
   { label: 'Stores', path: '/stores', icon: <StoreIcon /> },
   { label: 'Statistics', path: '/statistics', icon: <BarChartIcon /> },
 ];
