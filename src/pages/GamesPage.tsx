@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
+import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import {
@@ -13,6 +14,7 @@ import {
   DialogContentText,
   DialogTitle,
   IconButton,
+  InputAdornment,
   Paper,
   Table,
   TableBody,
@@ -20,6 +22,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -63,16 +66,32 @@ function GamesPage() {
   const [editTarget, setEditTarget] = useState<Game | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null);
   const [activeLetter, setActiveLetter] = useState<string | null>('A');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const isSearching = searchQuery.length >= 3;
 
   const availableLetters = useMemo(
     () => new Set(games.map((g) => getLetterGroup(g.title))),
     [games],
   );
 
-  const filteredGames = useMemo(
-    () => (activeLetter ? games.filter((g) => getLetterGroup(g.title) === activeLetter) : games),
-    [games, activeLetter],
-  );
+  const filteredGames = useMemo(() => {
+    if (isSearching) {
+      const q = searchQuery.toLowerCase();
+      return games.filter((g) => g.title.toLowerCase().includes(q));
+    }
+    return activeLetter ? games.filter((g) => getLetterGroup(g.title) === activeLetter) : games;
+  }, [games, activeLetter, searchQuery, isSearching]);
+
+  const handleSearchChange = (value: string): void => {
+    setSearchQuery(value);
+    if (value.length >= 3) setActiveLetter(null);
+  };
+
+  const handleClearSearch = (): void => {
+    setSearchQuery('');
+    setActiveLetter(null);
+  };
 
   const handleAddSubmit = async (title: string, state: Game['state'], storeIds: string[]): Promise<void> => {
     await createGame(title, state, storeIds);
@@ -111,14 +130,34 @@ function GamesPage() {
         <Typography variant="h5" fontWeight={600}>
           Games
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setAddOpen(true)}
-          disabled={isOperating}
-        >
-          Add Game
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TextField
+            size="small"
+            placeholder="Search games…"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            sx={{ width: 220 }}
+            slotProps={{
+              input: {
+                endAdornment: searchQuery.length > 0 && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={handleClearSearch} edge="end">
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAddOpen(true)}
+            disabled={isOperating}
+          >
+            Add Game
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -137,6 +176,7 @@ function GamesPage() {
             size="small"
             variant={activeLetter === null ? 'contained' : 'outlined'}
             onClick={() => setActiveLetter(null)}
+            disabled={isSearching}
             sx={{ minWidth: 52, px: 1 }}
           >
             See All
@@ -147,7 +187,7 @@ function GamesPage() {
               size="small"
               variant={activeLetter === letter ? 'contained' : 'outlined'}
               onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
-              disabled={!availableLetters.has(letter)}
+              disabled={isSearching || !availableLetters.has(letter)}
               sx={{ minWidth: 36, px: 1 }}
             >
               {letter}
