@@ -224,8 +224,8 @@ function buildHistoryCharts(history: StatisticsEntry[]) {
     label: formatChartDate(e.date), value: e.notYetPlayed,
   }));
   const deltaData = history
-    .filter((e) => e.diffNotYetPlayed !== null)
-    .map((e) => ({ label: formatChartDate(e.date), value: e.diffNotYetPlayed as number }));
+    .filter((e) => e.diffPercentNotYetPlayed !== null)
+    .map((e) => ({ label: formatChartDate(e.date), value: e.diffPercentNotYetPlayed as number }));
   return { totalData, backlogData, deltaData };
 }
 
@@ -319,7 +319,7 @@ function DashboardPage() {
           />
           {deltaData.length >= 1 && (
             <DeltaBarChart
-              title="Backlog Change Over Time (Δ Not Yet Played)"
+              title="Backlog Change Over Time (Δ % Not Yet Played)"
               data={deltaData}
             />
           )}
