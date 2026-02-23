@@ -119,6 +119,7 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
           .filter((b) => b.decision === 'import-new')
           .map((b) => b.steamGame),
       ];
+      // 'skip' items are simply not included in either list
 
       const result = await batchImport(
         {
@@ -215,7 +216,7 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
   // Conflict resolution handlers
   // ---------------------------------------------------------------------------
 
-  const handleDecisionChange = (appid: number, decision: 'merge' | 'import-new'): void => {
+  const handleDecisionChange = (appid: number, decision: 'merge' | 'import-new' | 'skip'): void => {
     setState((prev) => ({
       ...prev,
       bucketB: prev.bucketB.map((item) =>
@@ -355,9 +356,14 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
                       onChange={(e) =>
                         handleDecisionChange(
                           item.steamGame.appid,
-                          e.target.value as 'merge' | 'import-new',
+                          e.target.value as 'merge' | 'import-new' | 'skip',
                         )}
                     >
+                      <FormControlLabel
+                        value="skip"
+                        control={<Radio size="small" />}
+                        label="Skip"
+                      />
                       <FormControlLabel
                         value="merge"
                         control={<Radio size="small" />}

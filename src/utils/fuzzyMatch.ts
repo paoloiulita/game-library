@@ -20,7 +20,7 @@ export interface BucketBMatch {
   steamGame: SteamGame;
   dbGame: Game;
   score: number;
-  decision: 'merge' | 'import-new';
+  decision: 'merge' | 'import-new' | 'skip';
 }
 
 export interface CategorizationResult {
@@ -37,7 +37,7 @@ export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
     .replace(/^(the|a|an)\s+/, '') // strip leading articles
-    .replace(/[^a-z0-9\s]/g, '')   // remove punctuation and symbols
+    .replace(/[^a-z0-9\s]/g, '') // remove punctuation and symbols
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -48,7 +48,7 @@ export function normalizeTitle(title: string): string {
 
 function getBigrams(str: string): Map<string, number> {
   const bigrams = new Map<string, number>();
-  for (let i = 0; i < str.length - 1; i++) {
+  for (let i = 0; i < str.length - 1; i += 1) {
     const bigram = str.slice(i, i + 2);
     bigrams.set(bigram, (bigrams.get(bigram) ?? 0) + 1);
   }
@@ -63,9 +63,9 @@ function diceCoefficient(a: string, b: string): number {
   const bBigrams = getBigrams(b);
 
   let intersectionCount = 0;
-  for (const [bigram, count] of aBigrams) {
+  aBigrams.forEach((count, bigram) => {
     intersectionCount += Math.min(count, bBigrams.get(bigram) ?? 0);
-  }
+  });
 
   return (2 * intersectionCount) / (a.length - 1 + b.length - 1);
 }
@@ -92,43 +92,43 @@ export function categorizeSteamGames(
     normalized: normalizeTitle(game.title),
   }));
 
-  for (const steamGame of steamGames) {
+  steamGames.forEach((steamGame) => {
     const normalizedSteam = normalizeTitle(steamGame.name);
 
     if (normalizedSteam.length === 0) {
       bucketC.push(steamGame);
-      continue;
+      return; // skip to next game
     }
 
-    let bestScore = 0;
-    let bestDbGame: Game | null = null;
+    // Find the best-matching DB game using reduce
+    const best = normalizedDb.reduce<{ score: number; game: Game | null }>(
+      (acc, { game, normalized }) => {
+        if (normalized.length === 0) return acc;
 
-    for (const { game, normalized } of normalizedDb) {
-      if (normalized.length === 0) continue;
+        let score = diceCoefficient(normalizedSteam, normalized);
 
-      let score = diceCoefficient(normalizedSteam, normalized);
+        // Substring boost: if one title contains the other, guarantee Bucket B
+        const isSubstring = normalized.includes(normalizedSteam)
+          || normalizedSteam.includes(normalized);
+        if (isSubstring && score < SUBSTRING_FLOOR) {
+          score = SUBSTRING_FLOOR;
+        }
 
-      // Substring boost: if one title contains the other, guarantee Bucket B
-      const isSubstring =
-        normalized.includes(normalizedSteam) || normalizedSteam.includes(normalized);
-      if (isSubstring && score < SUBSTRING_FLOOR) {
-        score = SUBSTRING_FLOOR;
-      }
+        return score > acc.score ? { score, game } : acc;
+      },
+      { score: 0, game: null },
+    );
 
-      if (score > bestScore) {
-        bestScore = score;
-        bestDbGame = game;
-      }
-    }
-
-    if (bestScore > THRESHOLD_A && bestDbGame !== null) {
-      bucketA.push({ steamGame, dbGame: bestDbGame, score: bestScore });
-    } else if (bestScore >= THRESHOLD_B && bestDbGame !== null) {
-      bucketB.push({ steamGame, dbGame: bestDbGame, score: bestScore, decision: 'merge' });
+    if (best.score > THRESHOLD_A && best.game !== null) {
+      bucketA.push({ steamGame, dbGame: best.game, score: best.score });
+    } else if (best.score >= THRESHOLD_B && best.game !== null) {
+      bucketB.push({
+        steamGame, dbGame: best.game, score: best.score, decision: 'skip',
+      });
     } else {
       bucketC.push(steamGame);
     }
-  }
+  });
 
   return { bucketA, bucketB, bucketC };
 }
