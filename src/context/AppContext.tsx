@@ -39,7 +39,10 @@ type AppAction =
 const loadConfigFromStorage = (): AppConfig | null => {
   const clientId = localStorage.getItem(STORAGE_KEYS.CLIENT_ID);
   const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-  if (clientId && spreadsheetId) return { clientId, spreadsheetId };
+  if (clientId && spreadsheetId) {
+    const steamApiKey = localStorage.getItem(STORAGE_KEYS.STEAM_API_KEY) ?? undefined;
+    return { clientId, spreadsheetId, steamApiKey };
+  }
   return null;
 };
 
@@ -103,6 +106,11 @@ function AppProvider({ children }: AppProviderProps) {
   const saveConfig = useCallback((config: AppConfig): void => {
     localStorage.setItem(STORAGE_KEYS.CLIENT_ID, config.clientId);
     localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, config.spreadsheetId);
+    if (config.steamApiKey) {
+      localStorage.setItem(STORAGE_KEYS.STEAM_API_KEY, config.steamApiKey);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.STEAM_API_KEY);
+    }
     dispatch({ type: 'SAVE_CONFIG', payload: config });
   }, []);
 

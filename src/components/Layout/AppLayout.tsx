@@ -1,5 +1,6 @@
 import BarChartIcon from '@mui/icons-material/BarChart';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -24,6 +25,7 @@ import { type ReactElement, type ReactNode, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppContext } from '../../context/AppContext';
+import SteamImportWizard from '../Import/SteamImportWizard';
 import SetupModal from '../Setup/SetupModal';
 
 const DRAWER_WIDTH = 220;
@@ -50,6 +52,7 @@ function AppLayout({ children }: AppLayoutProps) {
   const { signOut } = useAppContext();
   const { pathname } = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -97,6 +100,11 @@ function AppLayout({ children }: AppLayoutProps) {
         >
           <Toolbar>
             <Typography variant="h6" sx={{ flexGrow: 1 }} />
+            <Tooltip title="Import from Steam">
+              <IconButton onClick={() => setImportOpen(true)}>
+                <CloudDownloadIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Settings">
               <IconButton onClick={() => setSettingsOpen(true)}>
                 <SettingsIcon />
@@ -117,6 +125,9 @@ function AppLayout({ children }: AppLayoutProps) {
 
       {settingsOpen && (
         <SetupModal />
+      )}
+      {importOpen && (
+        <SteamImportWizard open={importOpen} onClose={() => setImportOpen(false)} />
       )}
     </Box>
   );

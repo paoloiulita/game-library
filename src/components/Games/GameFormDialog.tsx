@@ -16,7 +16,7 @@ import {
   Select,
   TextField,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { GAME_STATES } from '../../types/entities';
 import type { Game, GameState, Store } from '../../types/entities';
@@ -46,14 +46,18 @@ function GameFormDialog({
   const [selectedStoreIds, setSelectedStoreIds] = useState<Set<string>>(new Set());
   const [titleError, setTitleError] = useState('');
 
-  // Populate fields when editing
+  // Populate fields only when the dialog transitions from closed → open.
+  // Using a ref to track previous `open` value prevents re-initialization on
+  // every render caused by `currentStoreIds` being a new array reference.
+  const prevOpen = useRef(false);
   useEffect(() => {
-    if (open) {
+    if (open && !prevOpen.current) {
       setTitle(game?.title ?? '');
       setGameState(game?.state ?? 'Not Yet Played');
       setSelectedStoreIds(new Set(currentStoreIds));
       setTitleError('');
     }
+    prevOpen.current = open;
   }, [open, game, currentStoreIds]);
 
   const handleStoreToggle = (storeId: string): void => {

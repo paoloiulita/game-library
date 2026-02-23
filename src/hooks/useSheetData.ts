@@ -21,6 +21,18 @@ import {
 import type {
   Game, GameState, GameStoreRelation, StatisticsEntry, Store,
 } from '../types/entities';
+import type { BucketAMatch, BucketBMatch, SteamGame } from '../utils/fuzzyMatch';
+
+export interface BatchImportParams {
+  toAutoMerge: BucketAMatch[];
+  toMergeManually: BucketBMatch[];
+  toImportAsNew: SteamGame[];
+}
+
+export interface BatchImportResult {
+  newGamesAdded: number;
+  autoMerged: number;
+}
 
 interface SheetDataState {
   games: Game[];
@@ -54,6 +66,10 @@ export interface UseSheetDataReturn extends SheetDataState {
   createStore: (name: string) => Promise<void>;
   updateStore: (store: Store) => Promise<void>;
   deleteStore: (storeId: string) => Promise<void>;
+  batchImport: (
+    params: BatchImportParams,
+    onProgress?: (pct: number) => void,
+  ) => Promise<BatchImportResult>;
   clearError: () => void;
 }
 
@@ -339,6 +355,71 @@ function useSheetData(): UseSheetDataReturn {
     setData((prev) => ({ ...prev, error: null }));
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Steam batch import
+  // ---------------------------------------------------------------------------
+
+  const batchImport = useCallback(
+    async (
+      params: BatchImportParams,
+      onProgress?: (pct: number) => void,
+    ): Promise<BatchImportResult> => {
+      const token = await getToken();
+
+      // Find or create the "Steam" store
+      let steamStore = data.stores.find((s) => s.name.toLowerCase() === 'steam') ?? null;
+      if (!steamStore) {
+        const newStore: Store = { id: crypto.randomUUID(), name: 'Steam' };
+        await apiCreateStore(spreadsheetId, newStore, token);
+        steamStore = newStore;
+      }
+      const steamStoreId = steamStore.id;
+
+      // Process merges (Bucket A + Bucket B with decision === 'merge')
+      const allMerges = [...params.toAutoMerge, ...params.toMergeManually];
+      for (const match of allMerges) {
+        const alreadyLinked = data.relations.some(
+          (r) => r.gameId === match.dbGame.id && r.storeId === steamStoreId,
+        );
+        if (!alreadyLinked) {
+          await createRelation(
+            spreadsheetId,
+            { gameId: match.dbGame.id, storeId: steamStoreId },
+            token,
+          );
+        }
+      }
+
+      // Process new games (Bucket C + Bucket B 'import-new')
+      const total = params.toImportAsNew.length;
+      let processed = 0;
+      for (const steamGame of params.toImportAsNew) {
+        const newGame: Game = {
+          id: crypto.randomUUID(),
+          title: steamGame.name,
+          state: 'Not Yet Played',
+          isWishlist: steamGame.isWishlist,
+        };
+        await apiCreateGame(spreadsheetId, newGame, token);
+        await createRelation(
+          spreadsheetId,
+          { gameId: newGame.id, storeId: steamStoreId },
+          token,
+        );
+        processed += 1;
+        onProgress?.(Math.round((processed / Math.max(total, 1)) * 100));
+      }
+
+      await refresh();
+
+      return {
+        newGamesAdded: params.toImportAsNew.length,
+        autoMerged: params.toAutoMerge.length,
+      };
+    },
+    [spreadsheetId, getToken, data.stores, data.relations, refresh],
+  );
+
   return {
     ...data,
     ownedGames,
@@ -355,6 +436,7 @@ function useSheetData(): UseSheetDataReturn {
     createStore,
     updateStore,
     deleteStore,
+    batchImport,
     clearError,
   };
 }

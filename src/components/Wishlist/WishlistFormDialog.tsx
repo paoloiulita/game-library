@@ -13,7 +13,7 @@ import {
   FormLabel,
   TextField,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Game, Store } from '../../types/entities';
 
@@ -41,12 +41,17 @@ function WishlistFormDialog({
   const [selectedStoreIds, setSelectedStoreIds] = useState<Set<string>>(new Set());
   const [titleError, setTitleError] = useState('');
 
+  // Populate fields only when the dialog transitions from closed → open.
+  // Using a ref to track previous `open` value prevents re-initialization on
+  // every render caused by `currentStoreIds` being a new array reference.
+  const prevOpen = useRef(false);
   useEffect(() => {
-    if (open) {
+    if (open && !prevOpen.current) {
       setTitle(game?.title ?? '');
       setSelectedStoreIds(new Set(currentStoreIds));
       setTitleError('');
     }
+    prevOpen.current = open;
   }, [open, game, currentStoreIds]);
 
   const handleStoreToggle = (storeId: string): void => {

@@ -39,4 +39,5 @@ export interface StatisticsEntry {
 export interface AppConfig {
   clientId: string;
   spreadsheetId: string;
+  steamApiKey?: string;
 }

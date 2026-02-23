@@ -7,6 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Link,
   TextField,
   Typography,
@@ -33,11 +34,13 @@ function SetupModal() {
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(
     state.config?.spreadsheetId ?? '',
   );
+  const [steamApiKey, setSteamApiKey] = useState(state.config?.steamApiKey ?? '');
 
   const handleSaveConfig = (): void => {
     const config: AppConfig = {
       clientId: clientId.trim(),
       spreadsheetId: extractSpreadsheetId(spreadsheetUrl.trim()),
+      steamApiKey: steamApiKey.trim() || undefined,
     };
     saveConfig(config);
     setStep('signin');
@@ -89,6 +92,32 @@ function SetupModal() {
               onChange={(e) => setSpreadsheetUrl(e.target.value)}
               margin="normal"
               helperText="Paste the full URL or just the spreadsheet ID"
+            />
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" gutterBottom>
+              Steam Import (Optional)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Required to import your Steam library. Steam no longer exposes
+              game data in its public profile HTML, so a Web API Key is the
+              only way to fetch it reliably.{' '}
+              <Link
+                href="https://steamcommunity.com/dev/apikey"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Get your Steam Web API Key
+              </Link>
+            </Typography>
+            <TextField
+              label="Steam Web API Key"
+              fullWidth
+              value={steamApiKey}
+              onChange={(e) => setSteamApiKey(e.target.value)}
+              margin="normal"
+              helperText="Optional — only needed for Steam import"
             />
           </DialogContent>
           <DialogActions>
