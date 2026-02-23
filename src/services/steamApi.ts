@@ -6,11 +6,6 @@ function proxied(url: string): string {
   return `${CORS_PROXY}${encodeURIComponent(url)}`;
 }
 
-export interface SteamFetchResult {
-  ownedGames: SteamGame[];
-  wishlistGames: SteamGame[];
-}
-
 // ---------------------------------------------------------------------------
 // Steam ID resolution
 // ---------------------------------------------------------------------------
@@ -106,63 +101,4 @@ export async function fetchOwnedGames(
   return games
     .filter((g) => g.name?.trim().length > 0)
     .map((g) => ({ appid: g.appid, name: g.name, isWishlist: false }));
-}
-
-// ---------------------------------------------------------------------------
-// Wishlist
-// ---------------------------------------------------------------------------
-
-interface RawWishlistEntry {
-  name: string;
-}
-
-export async function fetchWishlist(steamId: string): Promise<SteamGame[]> {
-  const url = `https://store.steampowered.com/wishlist/profiles/${steamId}/wishlistdata/`;
-  let response: Response;
-  try {
-    response = await fetch(proxied(url));
-  } catch {
-    throw new Error('Network error while fetching Steam wishlist.');
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Steam wishlist (HTTP ${response.status}).`);
-  }
-
-  let data: Record<string, RawWishlistEntry> | unknown[];
-  try {
-    data = (await response.json()) as Record<string, RawWishlistEntry> | unknown[];
-  } catch {
-    throw new Error('Failed to parse Steam wishlist. The wishlist may be private.');
-  }
-
-  // Steam returns [] for private or empty wishlists
-  if (Array.isArray(data)) return [];
-
-  return Object.entries(data as Record<string, RawWishlistEntry>)
-    .filter(([, entry]) => entry.name?.trim().length > 0)
-    .map(([appid, entry]) => ({
-      appid: Number(appid),
-      name: entry.name,
-      isWishlist: true,
-    }));
-}
-
-// ---------------------------------------------------------------------------
-// Combined fetch with deduplication
-// ---------------------------------------------------------------------------
-
-export async function fetchAllSteamGames(
-  steamId: string,
-  apiKey: string,
-): Promise<SteamFetchResult> {
-  const [ownedGames] = await Promise.all([
-    fetchOwnedGames(steamId, apiKey),
-    // fetchWishlist(steamId),
-  ]);
-
-  // If a game appears in both (owned + wishlisted), owned takes precedence
-  // const ownedAppIds = new Set(ownedGames.map((g) => g.appid));
-  // const deduplicatedWishlist = wishlistGames.filter((g) => !ownedAppIds.has(g.appid));
-
-  return { ownedGames, wishlistGames: [] };
 }

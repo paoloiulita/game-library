@@ -25,7 +25,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAppContext } from '../../context/AppContext';
 import { useSheetDataContext } from '../../context/SheetDataContext';
-import { fetchAllSteamGames, resolveSteamId } from '../../services/steamApi';
+import { fetchOwnedGames, resolveSteamId } from '../../services/steamApi';
 import {
   categorizeSteamGames,
 } from '../../utils/fuzzyMatch';
@@ -108,7 +108,9 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
     bucketC: SteamGame[];
     totalFetched: number;
   }): Promise<void> => {
-    setState((prev) => ({ ...prev, step: 'executing', executionProgress: 0, error: null }));
+    setState((prev) => ({
+      ...prev, step: 'executing', executionProgress: 0, error: null,
+    }));
     try {
       const toMergeManually = params.bucketB.filter((b) => b.decision === 'merge');
       const toImportAsNew: SteamGame[] = [
@@ -163,13 +165,14 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
       return;
     }
 
-    setState((prev) => ({ ...prev, step: 'fetching', urlError: '', error: null }));
+    setState((prev) => ({
+      ...prev, step: 'fetching', urlError: '', error: null,
+    }));
     try {
       const steamId = await resolveSteamId(trimmed);
-      const { ownedGames, wishlistGames } = await fetchAllSteamGames(steamId, steamApiKey);
+      const ownedGames = await fetchOwnedGames(steamId, steamApiKey);
 
-      const allSteamGames = [...ownedGames, ...wishlistGames];
-      const totalFetched = allSteamGames.length;
+      const totalFetched = ownedGames.length;
 
       if (totalFetched === 0) {
         // Nothing fetched → show report with zeros
@@ -177,12 +180,14 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
           ...prev,
           step: 'report',
           totalFetched: 0,
-          report: { totalFetched: 0, newGamesAdded: 0, autoMerged: 0, manuallyResolved: 0 },
+          report: {
+            totalFetched: 0, newGamesAdded: 0, autoMerged: 0, manuallyResolved: 0,
+          },
         }));
         return;
       }
 
-      const categorization = categorizeSteamGames(allSteamGames, games);
+      const categorization = categorizeSteamGames(ownedGames, games);
 
       if (categorization.bucketB.length === 0) {
         // No conflicts — execute immediately
@@ -214,7 +219,7 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
     setState((prev) => ({
       ...prev,
       bucketB: prev.bucketB.map((item) =>
-        item.steamGame.appid === appid ? { ...item, decision } : item),
+        (item.steamGame.appid === appid ? { ...item, decision } : item)),
     }));
   };
 
@@ -240,15 +245,21 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
   const renderEnterUrl = () => (
     <>
       <DialogTitle>Import from Steam</DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+      <DialogContent sx={{
+        display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important',
+      }}
+      >
         {state.error && (
           <Alert severity="error" onClose={() => setState((prev) => ({ ...prev, error: null }))}>
             {state.error}
           </Alert>
         )}
         <Typography variant="body2" color="text.secondary">
-          Enter your Steam profile URL to import your game library and wishlist.
-          Your profile and game details must be set to <strong>Public</strong>.
+          Enter your Steam profile URL to import your game library.
+          Your profile and game details must be set to
+          {' '}
+          <strong>Public</strong>
+          .
         </Typography>
         <TextField
           label="Steam Profile URL"
@@ -259,12 +270,12 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
           onChange={(e) => setState((prev) => ({ ...prev, steamUrl: e.target.value, urlError: '' }))}
           error={Boolean(state.urlError)}
           helperText={state.urlError || 'Accepts numeric profile URL or vanity URL (e.g. /id/username)'}
-          onKeyDown={(e) => { if (e.key === 'Enter') void handleFetch(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleFetch(); }}
         />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => void handleFetch()}>
+        <Button variant="contained" onClick={handleFetch}>
           Fetch
         </Button>
       </DialogActions>
@@ -275,7 +286,10 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
     <>
       <DialogTitle>Import from Steam</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4 }}>
+        <Box sx={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4,
+        }}
+        >
           <CircularProgress />
           <Typography color="text.secondary">Fetching and analyzing your Steam library…</Typography>
         </Box>
@@ -294,10 +308,21 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
         )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           These Steam games are similar to titles already in your library.
-          Choose whether to <strong>Merge</strong> (add Steam as a store to the existing game)
-          or <strong>Import as New</strong> (create a separate entry).
+          Choose whether to
+          {' '}
+          <strong>Merge</strong>
+          {' '}
+          (add Steam as a store to the existing game)
+          or
+          {' '}
+          <strong>Import as New</strong>
+          {' '}
+          (create a separate entry).
         </Typography>
-        <Box sx={{ mb: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{
+          mb: 1, display: 'flex', gap: 1, flexWrap: 'wrap',
+        }}
+        >
           <Chip label={`${state.bucketA.length} auto-merged`} size="small" color="success" variant="outlined" />
           <Chip label={`${state.bucketB.length} to resolve`} size="small" color="warning" variant="outlined" />
           <Chip label={`${state.bucketC.length} new`} size="small" color="primary" variant="outlined" />
@@ -318,7 +343,8 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
                   <TableCell>{item.steamGame.name}</TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
-                      {Math.round(item.score * 100)}%
+                      {Math.round(item.score * 100)}
+                      %
                     </Typography>
                   </TableCell>
                   <TableCell>{item.dbGame.title}</TableCell>
@@ -330,8 +356,7 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
                         handleDecisionChange(
                           item.steamGame.appid,
                           e.target.value as 'merge' | 'import-new',
-                        )
-                      }
+                        )}
                     >
                       <FormControlLabel
                         value="merge"
@@ -353,7 +378,7 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => void handleContinue()}>
+        <Button variant="contained" onClick={handleContinue}>
           Continue
         </Button>
       </DialogActions>
@@ -364,7 +389,10 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
     <>
       <DialogTitle>Importing…</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
+        <Box sx={{
+          display: 'flex', flexDirection: 'column', gap: 2, py: 2,
+        }}
+        >
           <Typography color="text.secondary">
             Writing to your Google Sheet. Please wait…
           </Typography>
@@ -374,7 +402,8 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
           />
           {state.executionProgress > 0 && (
             <Typography variant="body2" color="text.secondary" align="right">
-              {state.executionProgress}%
+              {state.executionProgress}
+              %
             </Typography>
           )}
         </Box>
@@ -393,19 +422,23 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
           </Alert>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Typography>
-              Total games fetched from Steam:{' '}
+              Total games fetched from Steam:
+              {' '}
               <strong>{r.totalFetched}</strong>
             </Typography>
             <Typography>
-              New games added:{' '}
+              New games added:
+              {' '}
               <strong>{r.newGamesAdded}</strong>
             </Typography>
             <Typography>
-              Exact matches auto-merged:{' '}
+              Exact matches auto-merged:
+              {' '}
               <strong>{r.autoMerged}</strong>
             </Typography>
             <Typography>
-              Fuzzy matches resolved manually:{' '}
+              Fuzzy matches resolved manually:
+              {' '}
               <strong>{r.manuallyResolved}</strong>
             </Typography>
           </Box>
