@@ -5,7 +5,9 @@ import {
 import { useAppContext } from '../context/AppContext';
 import {
   createGame as apiCreateGame,
+  createGames as apiCreateGames,
   createRelation,
+  createRelations as apiCreateRelations,
   createStore as apiCreateStore,
   deleteGame as apiDeleteGame,
   deleteRelationsForGame,
@@ -375,45 +377,49 @@ function useSheetData(): UseSheetDataReturn {
       }
       const steamStoreId = steamStore.id;
 
-      // Process merges (Bucket A + Bucket B with decision === 'merge')
-      const allMerges = [...params.toAutoMerge, ...params.toMergeManually];
-      for (const match of allMerges) {
-        const alreadyLinked = data.relations.some(
-          (r) => r.gameId === match.dbGame.id && r.storeId === steamStoreId,
-        );
-        if (!alreadyLinked) {
-          await createRelation(
-            spreadsheetId,
-            { gameId: match.dbGame.id, storeId: steamStoreId },
-            token,
-          );
-        }
-      }
+      onProgress?.(10);
 
-      // Process new games (Bucket C + Bucket B 'import-new')
-      const total = params.toImportAsNew.length;
-      let processed = 0;
-      for (const steamGame of params.toImportAsNew) {
-        const newGame: Game = {
-          id: crypto.randomUUID(),
-          title: steamGame.name,
-          state: 'Not Yet Played',
-          isWishlist: steamGame.isWishlist,
-        };
-        await apiCreateGame(spreadsheetId, newGame, token);
-        await createRelation(
-          spreadsheetId,
-          { gameId: newGame.id, storeId: steamStoreId },
-          token,
-        );
-        processed += 1;
-        onProgress?.(Math.round((processed / Math.max(total, 1)) * 100));
-      }
+      // Build all new Game entities up front
+      const newGames: Game[] = params.toImportAsNew.map((steamGame) => ({
+        id: crypto.randomUUID(),
+        title: steamGame.name,
+        state: 'Not Yet Played' as const,
+        isWishlist: steamGame.isWishlist,
+      }));
+
+      // Write all new games in one API call
+      await apiCreateGames(spreadsheetId, newGames, token);
+
+      onProgress?.(50);
+
+      // Build all relations to write: merge relations + new-game relations
+      const existingRelationKeys = new Set(
+        data.relations.map((r) => `${r.gameId}:${r.storeId}`),
+      );
+
+      const mergeRelations: GameStoreRelation[] = [
+        ...params.toAutoMerge,
+        ...params.toMergeManually,
+      ]
+        .filter((match) => !existingRelationKeys.has(`${match.dbGame.id}:${steamStoreId}`))
+        .map((match) => ({ gameId: match.dbGame.id, storeId: steamStoreId }));
+
+      const newGameRelations: GameStoreRelation[] = newGames.map((g) => ({
+        gameId: g.id,
+        storeId: steamStoreId,
+      }));
+
+      // Write all relations in one API call
+      await apiCreateRelations(spreadsheetId, [...mergeRelations, ...newGameRelations], token);
+
+      onProgress?.(90);
 
       await refresh();
 
+      onProgress?.(100);
+
       return {
-        newGamesAdded: params.toImportAsNew.length,
+        newGamesAdded: newGames.length,
         autoMerged: params.toAutoMerge.length,
       };
     },

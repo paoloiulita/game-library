@@ -111,6 +111,26 @@ export const appendSheetRow = async (
   await assertOk(response);
 };
 
+/** Appends multiple rows to a sheet in a single API call. No-op if rows is empty. */
+export const appendSheetRows = async (
+  spreadsheetId: string,
+  sheetName: string,
+  rows: string[][],
+  accessToken: string,
+): Promise<void> => {
+  if (rows.length === 0) return;
+  const range = encodeURIComponent(`${sheetName}!A:A`);
+  const response = await fetch(
+    `${SHEETS_API_BASE}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`,
+    {
+      method: 'POST',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ values: rows }),
+    },
+  );
+  await assertOk(response);
+};
+
 /** Updates the data row at `rowIndex` (0-based, excluding the header row). */
 export const updateSheetRow = async (
   spreadsheetId: string,
@@ -291,6 +311,15 @@ export const createGame = async (
   await appendSheetRow(spreadsheetId, SHEET_NAMES.GAMES, gameToRow(game), accessToken);
 };
 
+/** Appends multiple games in a single API call. */
+export const createGames = async (
+  spreadsheetId: string,
+  games: Game[],
+  accessToken: string,
+): Promise<void> => {
+  await appendSheetRows(spreadsheetId, SHEET_NAMES.GAMES, games.map(gameToRow), accessToken);
+};
+
 export const updateGame = async (
   spreadsheetId: string,
   game: Game,
@@ -414,6 +443,20 @@ export const createRelation = async (
     spreadsheetId,
     SHEET_NAMES.GAME_STORE_RELATIONS,
     [relation.gameId, relation.storeId],
+    accessToken,
+  );
+};
+
+/** Appends multiple game-store relations in a single API call. */
+export const createRelations = async (
+  spreadsheetId: string,
+  relations: GameStoreRelation[],
+  accessToken: string,
+): Promise<void> => {
+  await appendSheetRows(
+    spreadsheetId,
+    SHEET_NAMES.GAME_STORE_RELATIONS,
+    relations.map((r) => [r.gameId, r.storeId]),
     accessToken,
   );
 };
