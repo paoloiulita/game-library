@@ -126,80 +126,41 @@ function GamesPage() {
 
   return (
     <Box>
-      {/* Sticky page header: title row + alphabetical index */}
       <Box sx={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 1,
-        bgcolor: 'background.default',
-        mt: -3,
-        pt: 3,
-        pb: 1,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
       }}
       >
-        <Box sx={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
-        }}
-        >
-          <Typography variant="h5" fontWeight={600}>
-            Games
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TextField
-              size="small"
-              placeholder="Search games…"
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              sx={{ width: 220 }}
-              slotProps={{
-                input: {
-                  endAdornment: searchQuery.length > 0 && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={handleClearSearch} edge="end">
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddOpen(true)}
-              disabled={isOperating}
-            >
-              Add Game
-            </Button>
-          </Box>
+        <Typography variant="h5" fontWeight={600}>
+          Games
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TextField
+            size="small"
+            placeholder="Search games…"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            sx={{ width: 220 }}
+            slotProps={{
+              input: {
+                endAdornment: searchQuery.length > 0 && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={handleClearSearch} edge="end">
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAddOpen(true)}
+            disabled={isOperating}
+          >
+            Add Game
+          </Button>
         </Box>
-
-        {/* Alphabetical index */}
-        {ownedGames.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            <Button
-              size="small"
-              variant={activeLetter === null ? 'contained' : 'outlined'}
-              onClick={() => setActiveLetter(null)}
-              disabled={isSearching}
-              sx={{ minWidth: 52, px: 1 }}
-            >
-              See All
-            </Button>
-            {LETTERS.map((letter) => (
-              <Button
-                key={letter}
-                size="small"
-                variant={activeLetter === letter ? 'contained' : 'outlined'}
-                onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
-                disabled={isSearching || !availableLetters.has(letter)}
-                sx={{ minWidth: 36, px: 1 }}
-              >
-                {letter}
-              </Button>
-            ))}
-          </Box>
-        )}
       </Box>
 
       {error && (
@@ -208,10 +169,40 @@ function GamesPage() {
         </Alert>
       )}
 
+      {/* Alphabetical index */}
+      {ownedGames.length > 0 && (
+        <Box sx={{
+          display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2,
+        }}
+        >
+          <Button
+            size="small"
+            variant={activeLetter === null ? 'contained' : 'outlined'}
+            onClick={() => setActiveLetter(null)}
+            disabled={isSearching}
+            sx={{ minWidth: 52, px: 1 }}
+          >
+            See All
+          </Button>
+          {LETTERS.map((letter) => (
+            <Button
+              key={letter}
+              size="small"
+              variant={activeLetter === letter ? 'contained' : 'outlined'}
+              onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
+              disabled={isSearching || !availableLetters.has(letter)}
+              sx={{ minWidth: 36, px: 1 }}
+            >
+              {letter}
+            </Button>
+          ))}
+        </Box>
+      )}
+
       {ownedGames.length === 0 ? (
         <Typography color="text.secondary">No games yet. Add your first game!</Typography>
       ) : (
-        <TableContainer component={Paper} sx={{ mt: 2 }}>
+        <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>

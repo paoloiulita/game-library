@@ -97,52 +97,40 @@ function WishlistPage() {
 
   return (
     <Box>
-      {/* Sticky page header */}
       <Box sx={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 1,
-        bgcolor: 'background.default',
-        mt: -3,
-        pt: 3,
-        pb: 1,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
       }}
       >
-        <Box sx={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
-        }}
-        >
-          <Typography variant="h5" fontWeight={600}>
-            Wishlist
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TextField
-              size="small"
-              placeholder="Search wishlist…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ width: 220 }}
-              slotProps={{
-                input: {
-                  endAdornment: searchQuery.length > 0 && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchQuery('')} edge="end">
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddOpen(true)}
-              disabled={isOperating}
-            >
-              Add to Wishlist
-            </Button>
-          </Box>
+        <Typography variant="h5" fontWeight={600}>
+          Wishlist
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TextField
+            size="small"
+            placeholder="Search wishlist…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ width: 220 }}
+            slotProps={{
+              input: {
+                endAdornment: searchQuery.length > 0 && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchQuery('')} edge="end">
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAddOpen(true)}
+            disabled={isOperating}
+          >
+            Add to Wishlist
+          </Button>
         </Box>
       </Box>
 
@@ -157,7 +145,7 @@ function WishlistPage() {
           Your wishlist is empty. Add a game you want to buy!
         </Typography>
       ) : (
-        <TableContainer component={Paper} sx={{ mt: 2 }}>
+        <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>

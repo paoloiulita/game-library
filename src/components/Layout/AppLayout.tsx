@@ -55,7 +55,7 @@ function AppLayout({ children }: AppLayoutProps) {
   const [importOpen, setImportOpen] = useState(false);
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <Drawer
         variant="permanent"
