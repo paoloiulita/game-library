@@ -132,6 +132,8 @@ function GamesPage() {
         top: 0,
         zIndex: 1,
         bgcolor: 'background.default',
+        mt: -3,
+        pt: 3,
         pb: 1,
       }}
       >
