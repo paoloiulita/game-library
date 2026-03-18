@@ -29,4 +29,6 @@ export const STORAGE_KEYS = {
   CLIENT_ID: 'vgl_client_id',
   SPREADSHEET_ID: 'vgl_spreadsheet_id',
   STEAM_API_KEY: 'vgl_steam_api_key',
+  AUTH_TOKEN: 'vgl_auth_token',
+  AUTH_EXPIRY: 'vgl_auth_expiry',
 } as const;

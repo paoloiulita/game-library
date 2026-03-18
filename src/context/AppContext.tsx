@@ -46,9 +46,18 @@ const loadConfigFromStorage = (): AppConfig | null => {
   return null;
 };
 
+const loadAuthFromStorage = (): AuthToken | null => {
+  const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  const expiry = localStorage.getItem(STORAGE_KEYS.AUTH_EXPIRY);
+  if (token && expiry && Date.now() < Number(expiry)) {
+    return { token, expiry: Number(expiry) };
+  }
+  return null;
+};
+
 const initialState: AppState = {
   config: loadConfigFromStorage(),
-  auth: null,
+  auth: loadAuthFromStorage(),
   isSigningIn: false,
   error: null,
 };
@@ -122,6 +131,8 @@ function AppProvider({ children }: AppProviderProps) {
     dispatch({ type: 'SET_SIGNING_IN', payload: true });
     try {
       const authToken = await requestAccessToken(state.config.clientId);
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authToken.token);
+      localStorage.setItem(STORAGE_KEYS.AUTH_EXPIRY, String(authToken.expiry));
       dispatch({ type: 'SET_AUTH', payload: authToken });
       await initializeSpreadsheet(state.config.spreadsheetId, authToken.token);
     } catch (err) {
@@ -136,6 +147,8 @@ function AppProvider({ children }: AppProviderProps) {
     if (state.auth) {
       revokeAccessToken(state.auth.token);
     }
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.AUTH_EXPIRY);
     dispatch({ type: 'CLEAR_AUTH' });
   }, [state.auth]);
 
@@ -146,6 +159,8 @@ function AppProvider({ children }: AppProviderProps) {
     // Token expired – request a new one (requires user interaction)
     if (!state.config) throw new Error('Not configured.');
     const authToken = await requestAccessToken(state.config.clientId);
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authToken.token);
+    localStorage.setItem(STORAGE_KEYS.AUTH_EXPIRY, String(authToken.expiry));
     dispatch({ type: 'SET_AUTH', payload: authToken });
     return authToken.token;
   }, [state.auth, state.config]);
