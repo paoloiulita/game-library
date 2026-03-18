@@ -324,12 +324,12 @@ function useSheetData(): UseSheetDataReturn {
   // ---------------------------------------------------------------------------
 
   const ownedGames = useMemo(
-    () => data.games.filter((g) => !g.isWishlist),
+    () => data.games.filter((g) => !g.isWishlist).sort((a, b) => a.title.localeCompare(b.title)),
     [data.games],
   );
 
   const wishlistGames = useMemo(
-    () => data.games.filter((g) => g.isWishlist),
+    () => data.games.filter((g) => g.isWishlist).sort((a, b) => a.title.localeCompare(b.title)),
     [data.games],
   );
 
