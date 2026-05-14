@@ -67,6 +67,8 @@ function GamesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null);
   const [activeLetter, setActiveLetter] = useState<string | null>('A');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
+  const [selectedStates, setSelectedStates] = useState<Set<Game['state']>>(new Set());
 
   const isSearching = searchQuery.length >= 3;
 
@@ -76,14 +78,42 @@ function GamesPage() {
   );
 
   const filteredGames = useMemo(() => {
+    let games = ownedGames;
+
+    // Apply search filter
     if (isSearching) {
       const q = searchQuery.toLowerCase();
-      return ownedGames.filter((g) => g.title.toLowerCase().includes(q));
+      games = games.filter((g) => g.title.toLowerCase().includes(q));
+    } else {
+      // Apply letter filter only when not searching
+      games = activeLetter
+        ? games.filter((g) => getLetterGroup(g.title) === activeLetter)
+        : games;
     }
-    return activeLetter
-      ? ownedGames.filter((g) => getLetterGroup(g.title) === activeLetter)
-      : ownedGames;
-  }, [ownedGames, activeLetter, searchQuery, isSearching]);
+
+    // Apply state filter
+    if (selectedStates.size > 0) {
+      games = games.filter((g) => selectedStates.has(g.state));
+    }
+
+    // Apply store filter
+    if (selectedStores.size > 0) {
+      games = games.filter((g) => {
+        const gameStoreIds = getStoreIdsForGame(g.id);
+        return gameStoreIds.some((sid) => selectedStores.has(sid));
+      });
+    }
+
+    return games;
+  }, [
+    ownedGames,
+    activeLetter,
+    searchQuery,
+    isSearching,
+    selectedStores,
+    selectedStates,
+    getStoreIdsForGame,
+  ]);
 
   const handleSearchChange = (value: string): void => {
     setSearchQuery(value);
@@ -94,6 +124,31 @@ function GamesPage() {
   const handleClearSearch = (): void => {
     setSearchQuery('');
     setActiveLetter('A');
+  };
+
+  const toggleStoreFilter = (storeId: string): void => {
+    const newStores = new Set(selectedStores);
+    if (newStores.has(storeId)) {
+      newStores.delete(storeId);
+    } else {
+      newStores.add(storeId);
+    }
+    setSelectedStores(newStores);
+  };
+
+  const toggleStateFilter = (state: Game['state']): void => {
+    const newStates = new Set(selectedStates);
+    if (newStates.has(state)) {
+      newStates.delete(state);
+    } else {
+      newStates.add(state);
+    }
+    setSelectedStates(newStates);
+  };
+
+  const clearAllFilters = (): void => {
+    setSelectedStores(new Set());
+    setSelectedStates(new Set());
   };
 
   const handleAddSubmit = async (title: string, state: Game['state'], storeIds: string[]): Promise<void> => {
@@ -167,6 +222,61 @@ function GamesPage() {
         <Alert severity="error" onClose={clearError} sx={{ mb: 2 }}>
           {error}
         </Alert>
+      )}
+
+      {/* Filters */}
+      {ownedGames.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          {/* State Filter */}
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+              State
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              {Object.keys(STATE_COLORS).map((state) => (
+                <Chip
+                  key={state}
+                  label={state}
+                  onClick={() => toggleStateFilter(state as Game['state'])}
+                  variant={selectedStates.has(state as Game['state']) ? 'filled' : 'outlined'}
+                  color={selectedStates.has(state as Game['state']) ? STATE_COLORS[state as Game['state']] : 'default'}
+                  size="small"
+                  sx={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Box>
+          </Box>
+
+          {/* Store Filter */}
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+              Store
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              {stores.map((store) => (
+                <Chip
+                  key={store.id}
+                  label={store.name}
+                  onClick={() => toggleStoreFilter(store.id)}
+                  variant={selectedStores.has(store.id) ? 'filled' : 'outlined'}
+                  size="small"
+                  sx={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Box>
+          </Box>
+
+          {/* Clear Filters */}
+          {(selectedStores.size > 0 || selectedStates.size > 0) && (
+            <Button
+              size="small"
+              onClick={clearAllFilters}
+              sx={{ mb: 1 }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Box>
       )}
 
       {/* Alphabetical index */}
