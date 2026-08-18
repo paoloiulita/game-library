@@ -290,9 +290,9 @@ function GamesPage() {
             variant={activeLetter === null ? 'contained' : 'outlined'}
             onClick={() => setActiveLetter(null)}
             disabled={isSearching}
-            sx={{ minWidth: 52, px: 1 }}
+            sx={{ minWidth: 36, px: 1 }}
           >
-            See All
+            *
           </Button>
           {LETTERS.map((letter) => (
             <Button
