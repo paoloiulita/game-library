@@ -1,4 +1,6 @@
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import {
+  CircularProgress, CssBaseline, ThemeProvider, createTheme,
+} from '@mui/material';
 import {
   BrowserRouter, Navigate, Route, Routes,
 } from 'react-router-dom';
@@ -20,7 +22,11 @@ const theme = createTheme({
 });
 
 function AppContent() {
-  const { isAuthenticated } = useAppContext();
+  const { isAuthenticated, isAuthLoading } = useAppContext();
+
+  if (isAuthLoading) {
+    return <CircularProgress sx={{ display: 'block', mx: 'auto', mt: 8 }} />;
+  }
 
   if (!isAuthenticated) {
     return <SetupModal />;

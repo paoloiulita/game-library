@@ -21,6 +21,7 @@ import type { AppConfig } from '../types/entities';
 interface AppState {
   config: AppConfig | null;
   auth: import('@supabase/supabase-js').Session | null;
+  isAuthLoading: boolean;
   isSigningIn: boolean;
   error: string | null;
 }
@@ -41,6 +42,7 @@ const loadConfigFromStorage = (): AppConfig | null => {
 const initialState: AppState = {
   config: loadConfigFromStorage(),
   auth: null,
+  isAuthLoading: true,
   isSigningIn: false,
   error: null,
 };
@@ -51,14 +53,20 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, config: action.payload, error: null };
     case 'SET_AUTH':
       return {
-        ...state, auth: action.payload, isSigningIn: false, error: null,
+        ...state,
+        auth: action.payload,
+        isAuthLoading: false,
+        isSigningIn: false,
+        error: null,
       };
     case 'CLEAR_AUTH':
       return { ...state, auth: null };
     case 'SET_SIGNING_IN':
       return { ...state, isSigningIn: action.payload, error: null };
     case 'SET_ERROR':
-      return { ...state, error: action.payload, isSigningIn: false };
+      return {
+        ...state, error: action.payload, isAuthLoading: false, isSigningIn: false,
+      };
     case 'CLEAR_ERROR':
       return { ...state, error: null };
     default:
@@ -74,6 +82,7 @@ interface AppContextValue {
   state: AppState;
   isConfigured: boolean;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   saveConfig: (config: AppConfig) => void;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -162,6 +171,7 @@ function AppProvider({ children }: AppProviderProps) {
       state,
       isConfigured: state.config !== null,
       isAuthenticated: state.auth !== null,
+      isAuthLoading: state.isAuthLoading,
       saveConfig,
       signIn,
       signOut,
