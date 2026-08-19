@@ -13,13 +13,15 @@ import {
   deleteRelationsForGame,
   deleteRelationsForStore,
   deleteStore as apiDeleteStore,
-  getGames,
-  getRelations,
   getStatisticsHistory,
-  getStores,
   updateGame as apiUpdateGame,
   updateStore as apiUpdateStore,
 } from '../services/sheetsApi';
+import {
+  getGames as getSupabaseGames,
+  getRelations as getSupabaseRelations,
+  getStores as getSupabaseStores,
+} from '../services/supabaseRepository';
 import type {
   Game, GameState, GameStoreRelation, StatisticsEntry, Store,
 } from '../types/entities';
@@ -97,14 +99,12 @@ function useSheetData(): UseSheetDataReturn {
   // ---------------------------------------------------------------------------
 
   const refresh = useCallback(async (): Promise<void> => {
-    if (!spreadsheetId) return;
     setData((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const token = await getToken();
       const [games, stores, relations] = await Promise.all([
-        getGames(spreadsheetId, token),
-        getStores(spreadsheetId, token),
-        getRelations(spreadsheetId, token),
+        getSupabaseGames(),
+        getSupabaseStores(),
+        getSupabaseRelations(),
       ]);
       setData((prev) => ({
         ...prev, games, stores, relations, isLoading: false, isOperating: false, error: null,
@@ -116,7 +116,7 @@ function useSheetData(): UseSheetDataReturn {
         error: err instanceof Error ? err.message : 'Failed to load data.',
       }));
     }
-  }, [spreadsheetId, getToken]);
+  }, []);
 
   const refreshHistory = useCallback(async (): Promise<void> => {
     if (!spreadsheetId) return;
@@ -134,21 +134,18 @@ function useSheetData(): UseSheetDataReturn {
     let active = true;
 
     const load = async (): Promise<void> => {
-      if (!spreadsheetId) return;
       try {
-        const token = await getToken();
-        const [games, stores, relations, statisticsHistory] = await Promise.all([
-          getGames(spreadsheetId, token),
-          getStores(spreadsheetId, token),
-          getRelations(spreadsheetId, token),
-          getStatisticsHistory(spreadsheetId, token),
+        const [games, stores, relations] = await Promise.all([
+          getSupabaseGames(),
+          getSupabaseStores(),
+          getSupabaseRelations(),
         ]);
         if (active) {
           setData({
             games,
             stores,
             relations,
-            statisticsHistory,
+            statisticsHistory: [],
             isLoading: false,
             isHistoryLoading: false,
             isOperating: false,
@@ -171,7 +168,7 @@ function useSheetData(): UseSheetDataReturn {
     return () => {
       active = false;
     };
-  }, [spreadsheetId, getToken]);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Helper: run an operation with loading state + error capture + auto-refresh
