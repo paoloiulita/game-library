@@ -102,7 +102,7 @@ function SetupModal() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Required to import your Steam library. Steam no longer exposes
               game data in its public profile HTML, so a Web API Key is the
-              only way to fetch it reliably.{' '}
+              only way to fetch it reliably.
               <Link
                 href="https://steamcommunity.com/dev/apikey"
                 target="_blank"

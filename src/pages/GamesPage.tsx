@@ -27,13 +27,14 @@ import {
   TextField,
   Tooltip,
   Typography,
+  type Theme,
 } from '@mui/material';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useMemo, useState } from 'react';
 
 import GameFormDialog from '../components/Games/GameFormDialog';
 import { useSheetDataContext } from '../context/SheetDataContext';
-import type { Game } from '../types/entities';
+import { type Game, type GameState } from '../types/entities';
 
 const LETTERS = [
   'Other',
@@ -186,6 +187,16 @@ function GamesPage() {
     );
   }
 
+  const getCircleColor = (gameState: GameState, theme: Theme) => {
+    if (gameState === 'Finished') {
+      return theme.palette.success.main;
+    }
+    if (gameState === 'Put Aside') {
+      return theme.palette.warning.main;
+    }
+    return theme.palette.grey[500];
+  };
+
   return (
     <Box>
       <Box sx={{
@@ -201,7 +212,11 @@ function GamesPage() {
           Games
         </Typography>
         <Box sx={{
-          display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', md: 'auto' },
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: { xs: 'stretch', md: 'center' },
+          gap: 1,
+          width: { xs: '100%', md: 'auto' },
         }}
         >
           <TextField
@@ -209,7 +224,7 @@ function GamesPage() {
             placeholder="Search games…"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            sx={{ flex: 1, minWidth: 0, width: { md: 220 } }}
+            sx={{ width: { xs: '100%', md: 220 } }}
             slotProps={{
               input: {
                 endAdornment: searchQuery.length > 0 && (
@@ -227,7 +242,7 @@ function GamesPage() {
             startIcon={<AddIcon />}
             onClick={() => setAddOpen(true)}
             disabled={isOperating}
-            sx={{ flexShrink: 0 }}
+            sx={{ flexShrink: 0, width: { xs: '100%', md: 'auto' } }}
           >
             Add Game
           </Button>
@@ -344,14 +359,25 @@ function GamesPage() {
       {ownedGames.length === 0 ? (
         <Typography color="text.secondary">No games yet. Add your first game!</Typography>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer component={Paper} sx={{ width: '100%', overflowX: { xs: 'hidden', md: 'auto' } }}>
+          <Table sx={{ width: '100%', tableLayout: { xs: 'fixed', md: 'auto' } }}>
             <TableHead>
               <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>State</TableCell>
-                <TableCell>Stores</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell sx={{ width: { xs: '42%', md: 'auto' }, px: { xs: 1, md: 2 } }}>
+                  Title
+                </TableCell>
+                <TableCell sx={{ width: { xs: '12%', md: 'auto' }, px: { xs: 1, md: 2 } }}>
+                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>State</Box>
+                </TableCell>
+                <TableCell sx={{ width: { xs: '26%', md: 'auto' }, px: { xs: 1, md: 2 } }}>
+                  Stores
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{ width: { xs: '20%', md: 'auto' }, px: { xs: 1, md: 2 } }}
+                >
+                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>Actions</Box>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -359,15 +385,39 @@ function GamesPage() {
                 const storeIds = getStoreIdsForGame(game.id);
                 return (
                   <TableRow key={game.id} hover>
-                    <TableCell>{game.title}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={game.state}
-                        color={STATE_COLORS[game.state]}
-                        size="small"
-                      />
+                    <TableCell
+                      sx={{ px: { xs: 1, md: 2 }, overflowWrap: 'anywhere' }}
+                    >
+                      {game.title}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ px: { xs: 1, md: 2 } }}>
+                      {isMobile ? (
+                        <Tooltip title={game.state}>
+                          <Box
+                            component="span"
+                            role="img"
+                            aria-label={game.state}
+                            sx={(theme) => ({
+                              display: 'inline-block',
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              bgcolor: getCircleColor(game.state, theme),
+                              verticalAlign: 'middle',
+                            })}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Chip
+                          label={game.state}
+                          color={STATE_COLORS[game.state]}
+                          size="small"
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell
+                      sx={{ px: { xs: 1, md: 2 }, overflow: 'hidden' }}
+                    >
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {storeIds.length === 0 ? (
                           <Typography variant="body2" color="text.secondary">
@@ -375,15 +425,25 @@ function GamesPage() {
                           </Typography>
                         ) : (
                           storeIds.map((sid) => (
-                            <Chip key={sid} label={getStoreName(sid)} size="small" variant="outlined" />
+                            <Chip
+                              key={sid}
+                              label={getStoreName(sid)}
+                              size="small"
+                              variant="outlined"
+                              sx={{ maxWidth: '100%' }}
+                            />
                           ))
                         )}
                       </Box>
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell
+                      align="right"
+                      sx={{ px: { xs: 0.5, md: 2 }, whiteSpace: 'nowrap' }}
+                    >
                       <Tooltip title="Edit">
                         <IconButton
                           size="small"
+                          sx={{ p: { xs: 0.5, md: 1 } }}
                           onClick={() => setEditTarget(game)}
                           disabled={isOperating}
                         >
@@ -394,6 +454,7 @@ function GamesPage() {
                         <IconButton
                           size="small"
                           color="error"
+                          sx={{ p: { xs: 0.5, md: 1 } }}
                           onClick={() => setDeleteTarget(game)}
                           disabled={isOperating}
                         >
