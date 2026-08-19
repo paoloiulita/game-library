@@ -1,10 +1,6 @@
 import {
-  GAMES_HEADERS,
-  RELATIONS_HEADERS,
   SHEET_NAMES,
   SHEETS_API_BASE,
-  STATS_HEADERS,
-  STORES_HEADERS,
 } from '../config/sheets';
 import type {
   Game, GameStoreRelation, StatisticsEntry, Store,
@@ -179,88 +175,6 @@ export const deleteSheetRow = async (
     }),
   });
   await assertOk(response);
-};
-
-// ---------------------------------------------------------------------------
-// Spreadsheet initialisation
-// ---------------------------------------------------------------------------
-
-/** Adds the IsWishlist header to an existing Games sheet that pre-dates the
- *  Wishlist feature. Safe to call on already-migrated sheets (no-op). */
-const migrateGamesSchema = async (
-  spreadsheetId: string,
-  accessToken: string,
-): Promise<void> => {
-  const rows = await getSheetValues(spreadsheetId, SHEET_NAMES.GAMES, accessToken);
-  const header = rows[0] ?? [];
-  if (header[3] === 'IsWishlist') return; // already up to date
-  const range = encodeURIComponent(`${SHEET_NAMES.GAMES}!A1`);
-  const response = await fetch(
-    `${SHEETS_API_BASE}/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`,
-    {
-      method: 'PUT',
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({ values: [GAMES_HEADERS] }),
-    },
-  );
-  await assertOk(response);
-};
-
-/** Ensures all required sheets exist and have the correct headers.
- *  Only creates sheets that are missing – existing ones are left untouched.
- *  Also runs lightweight schema migrations (e.g. adding IsWishlist column). */
-export const initializeSpreadsheet = async (
-  spreadsheetId: string,
-  accessToken: string,
-): Promise<void> => {
-  const metadata = await getSpreadsheetMetadata(spreadsheetId, accessToken);
-  const existingTitles = new Set(metadata.sheets.map((s) => s.properties.title));
-
-  const required = [
-    { name: SHEET_NAMES.GAMES, headers: GAMES_HEADERS },
-    { name: SHEET_NAMES.STORES, headers: STORES_HEADERS },
-    { name: SHEET_NAMES.GAME_STORE_RELATIONS, headers: RELATIONS_HEADERS },
-    { name: SHEET_NAMES.STATISTICS_HISTORY, headers: STATS_HEADERS },
-  ];
-
-  const toCreate = required.filter(({ name }) => !existingTitles.has(name));
-
-  // Run schema migrations on existing sheets regardless of whether new ones
-  // need to be created (Games sheet may pre-date the IsWishlist column).
-  if (existingTitles.has(SHEET_NAMES.GAMES)) {
-    await migrateGamesSchema(spreadsheetId, accessToken);
-  }
-
-  if (toCreate.length === 0) return;
-
-  // Create all missing sheets in a single batchUpdate
-  const createResponse = await fetch(`${SHEETS_API_BASE}/${spreadsheetId}:batchUpdate`, {
-    method: 'POST',
-    headers: authHeaders(accessToken),
-    body: JSON.stringify({
-      requests: toCreate.map(({ name }) => ({
-        addSheet: { properties: { title: name } },
-      })),
-    }),
-  });
-  await assertOk(createResponse);
-
-  // Add headers to each newly created sheet in one batchUpdate
-  const headersResponse = await fetch(
-    `${SHEETS_API_BASE}/${spreadsheetId}/values:batchUpdate`,
-    {
-      method: 'POST',
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({
-        valueInputOption: 'USER_ENTERED',
-        data: toCreate.map(({ name, headers }) => ({
-          range: `${name}!A1`,
-          values: [headers],
-        })),
-      }),
-    },
-  );
-  await assertOk(headersResponse);
 };
 
 // ---------------------------------------------------------------------------

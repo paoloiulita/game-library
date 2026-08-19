@@ -9,7 +9,6 @@ import {
 
 import { STORAGE_KEYS } from '../config/sheets';
 import { requestAccessToken, revokeAccessToken } from '../services/googleAuth';
-import { initializeSpreadsheet } from '../services/sheetsApi';
 import type { AppConfig } from '../types/entities';
 
 // ---------------------------------------------------------------------------
@@ -134,7 +133,6 @@ function AppProvider({ children }: AppProviderProps) {
       localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authToken.token);
       localStorage.setItem(STORAGE_KEYS.AUTH_EXPIRY, String(authToken.expiry));
       dispatch({ type: 'SET_AUTH', payload: authToken });
-      await initializeSpreadsheet(state.config.spreadsheetId, authToken.token);
     } catch (err) {
       dispatch({
         type: 'SET_ERROR',
