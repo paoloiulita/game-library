@@ -1,4 +1,3 @@
-import BarChartIcon from '@mui/icons-material/BarChart';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -45,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Games', path: '/games', icon: <SportsEsportsIcon /> },
   { label: 'Wishlist', path: '/wishlist', icon: <BookmarkIcon /> },
   { label: 'Stores', path: '/stores', icon: <StoreIcon /> },
-  { label: 'Statistics', path: '/statistics', icon: <BarChartIcon /> },
+  // { label: 'Statistics', path: '/statistics', icon: <BarChartIcon /> },
 ];
 
 interface AppLayoutProps {
