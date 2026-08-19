@@ -400,7 +400,7 @@ function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
         }}
         >
           <Typography color="text.secondary">
-            Writing to your Google Sheet. Please wait…
+            Saving to your library. Please wait…
           </Typography>
           <LinearProgress
             variant={state.executionProgress === 0 ? 'indeterminate' : 'determinate'}

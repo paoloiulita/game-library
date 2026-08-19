@@ -50,9 +50,9 @@ export interface UseSheetDataReturn extends SheetDataState {
   ownedGames: Game[];
   /** All wishlisted games. */
   wishlistGames: Game[];
-  /** Reload games/stores/relations from the spreadsheet. */
+  /** Reload games/stores/relations from Supabase. */
   refresh: () => Promise<void>;
-  /** Reload statistics history from the spreadsheet. */
+  /** Reload statistics history when that feature is enabled. */
   refreshHistory: () => Promise<void>;
   /** Derived: store IDs associated with a game. */
   getStoreIdsForGame: (gameId: string) => string[];
