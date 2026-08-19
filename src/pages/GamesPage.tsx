@@ -2,6 +2,8 @@ import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import {
   Alert,
   Box,
@@ -26,6 +28,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useMemo, useState } from 'react';
 
 import GameFormDialog from '../components/Games/GameFormDialog';
@@ -69,6 +72,8 @@ function GamesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [selectedStates, setSelectedStates] = useState<Set<Game['state']>>(new Set());
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   const isSearching = searchQuery.length >= 3;
 
@@ -151,6 +156,8 @@ function GamesPage() {
     setSelectedStates(new Set());
   };
 
+  const activeFilterCount = selectedStores.size + selectedStates.size + (activeLetter ? 1 : 0);
+
   const handleAddSubmit = async (title: string, state: Game['state'], storeIds: string[]): Promise<void> => {
     await createGame(title, state, storeIds);
     if (!error) setAddOpen(false);
@@ -182,19 +189,27 @@ function GamesPage() {
   return (
     <Box>
       <Box sx={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', md: 'center' },
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: 1.5,
+        mb: 2,
       }}
       >
         <Typography variant="h5" fontWeight={600}>
           Games
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', md: 'auto' },
+        }}
+        >
           <TextField
             size="small"
             placeholder="Search games…"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            sx={{ width: 220 }}
+            sx={{ flex: 1, minWidth: 0, width: { md: 220 } }}
             slotProps={{
               input: {
                 endAdornment: searchQuery.length > 0 && (
@@ -212,6 +227,7 @@ function GamesPage() {
             startIcon={<AddIcon />}
             onClick={() => setAddOpen(true)}
             disabled={isOperating}
+            sx={{ flexShrink: 0 }}
           >
             Add Game
           </Button>
@@ -224,50 +240,65 @@ function GamesPage() {
         </Alert>
       )}
 
-      {/* Filters */}
-      {ownedGames.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          {/* State Filter */}
-          <Box sx={{ mb: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-              State
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-              {Object.keys(STATE_COLORS).map((state) => (
-                <Chip
-                  key={state}
-                  label={state}
-                  onClick={() => toggleStateFilter(state as Game['state'])}
-                  variant={selectedStates.has(state as Game['state']) ? 'filled' : 'outlined'}
-                  color={selectedStates.has(state as Game['state']) ? STATE_COLORS[state as Game['state']] : 'default'}
-                  size="small"
-                  sx={{ cursor: 'pointer' }}
-                />
-              ))}
-            </Box>
-          </Box>
+      {ownedGames.length > 0 && isMobile && (
+        <Button
+          variant="outlined"
+          startIcon={<FilterListIcon />}
+          endIcon={<ExpandMoreIcon sx={{ transform: mobileFiltersOpen ? 'rotate(180deg)' : 'none' }} />}
+          onClick={() => setMobileFiltersOpen((open) => !open)}
+          fullWidth
+          sx={{ justifyContent: 'space-between', mb: 1.5 }}
+        >
+          Filters
+          {activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}
+        </Button>
+      )}
 
-          {/* Store Filter */}
-          <Box sx={{ mb: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-              Store
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-              {stores.map((store) => (
-                <Chip
-                  key={store.id}
-                  label={store.name}
-                  onClick={() => toggleStoreFilter(store.id)}
-                  variant={selectedStores.has(store.id) ? 'filled' : 'outlined'}
-                  size="small"
-                  sx={{ cursor: 'pointer' }}
-                />
-              ))}
+      <Box sx={{ display: { xs: mobileFiltersOpen ? 'block' : 'none', md: 'block' } }}>
+        {/* Filters */}
+        {ownedGames.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            {/* State Filter */}
+            <Box sx={{ mb: 1.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                State
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {Object.keys(STATE_COLORS).map((state) => (
+                  <Chip
+                    key={state}
+                    label={state}
+                    onClick={() => toggleStateFilter(state as Game['state'])}
+                    variant={selectedStates.has(state as Game['state']) ? 'filled' : 'outlined'}
+                    color={selectedStates.has(state as Game['state']) ? STATE_COLORS[state as Game['state']] : 'default'}
+                    size="small"
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
 
-          {/* Clear Filters */}
-          {(selectedStores.size > 0 || selectedStates.size > 0) && (
+            {/* Store Filter */}
+            <Box sx={{ mb: 1.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Store
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {stores.map((store) => (
+                  <Chip
+                    key={store.id}
+                    label={store.name}
+                    onClick={() => toggleStoreFilter(store.id)}
+                    variant={selectedStores.has(store.id) ? 'filled' : 'outlined'}
+                    size="small"
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            {/* Clear Filters */}
+            {(selectedStores.size > 0 || selectedStates.size > 0) && (
             <Button
               size="small"
               onClick={clearAllFilters}
@@ -275,39 +306,40 @@ function GamesPage() {
             >
               Clear Filters
             </Button>
-          )}
-        </Box>
-      )}
+            )}
+          </Box>
+        )}
 
-      {/* Alphabetical index */}
-      {ownedGames.length > 0 && (
-        <Box sx={{
-          display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2,
-        }}
-        >
-          <Button
-            size="small"
-            variant={activeLetter === null ? 'contained' : 'outlined'}
-            onClick={() => setActiveLetter(null)}
-            disabled={isSearching}
-            sx={{ minWidth: 36, px: 1 }}
+        {/* Alphabetical index */}
+        {ownedGames.length > 0 && (
+          <Box sx={{
+            display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2,
+          }}
           >
-            *
-          </Button>
-          {LETTERS.map((letter) => (
             <Button
-              key={letter}
               size="small"
-              variant={activeLetter === letter ? 'contained' : 'outlined'}
-              onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
-              disabled={isSearching || !availableLetters.has(letter)}
+              variant={activeLetter === null ? 'contained' : 'outlined'}
+              onClick={() => setActiveLetter(null)}
+              disabled={isSearching}
               sx={{ minWidth: 36, px: 1 }}
             >
-              {letter}
+              *
             </Button>
-          ))}
-        </Box>
-      )}
+            {LETTERS.map((letter) => (
+              <Button
+                key={letter}
+                size="small"
+                variant={activeLetter === letter ? 'contained' : 'outlined'}
+                onClick={() => setActiveLetter(activeLetter === letter ? null : letter)}
+                disabled={isSearching || !availableLetters.has(letter)}
+                sx={{ minWidth: 36, px: 1 }}
+              >
+                {letter}
+              </Button>
+            ))}
+          </Box>
+        )}
+      </Box>
 
       {ownedGames.length === 0 ? (
         <Typography color="text.secondary">No games yet. Add your first game!</Typography>

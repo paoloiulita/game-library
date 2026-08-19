@@ -98,19 +98,27 @@ function WishlistPage() {
   return (
     <Box>
       <Box sx={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', md: 'center' },
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: 1.5,
+        mb: 2,
       }}
       >
         <Typography variant="h5" fontWeight={600}>
           Wishlist
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', md: 'auto' },
+        }}
+        >
           <TextField
             size="small"
             placeholder="Search wishlist…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: 220 }}
+            sx={{ flex: 1, minWidth: 0, width: { md: 220 } }}
             slotProps={{
               input: {
                 endAdornment: searchQuery.length > 0 && (
@@ -128,6 +136,7 @@ function WishlistPage() {
             startIcon={<AddIcon />}
             onClick={() => setAddOpen(true)}
             disabled={isOperating}
+            sx={{ flexShrink: 0 }}
           >
             Add to Wishlist
           </Button>

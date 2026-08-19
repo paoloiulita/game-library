@@ -3,6 +3,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
+import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import StoreIcon from '@mui/icons-material/Store';
@@ -21,7 +22,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { type ReactElement, type ReactNode, useState } from 'react';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import {
+  type ReactElement, type ReactNode, useEffect, useState,
+} from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAppContext } from '../../context/AppContext';
@@ -51,14 +55,22 @@ interface AppLayoutProps {
 function AppLayout({ children }: AppLayoutProps) {
   const { signOut } = useAppContext();
   const { pathname } = useLocation();
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [pathname]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <Drawer
-        variant="permanent"
+        variant={isMobile ? 'temporary' : 'permanent'}
+        open={!isMobile || mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
         sx={{
           width: DRAWER_WIDTH,
           flexShrink: 0,
@@ -69,7 +81,7 @@ function AppLayout({ children }: AppLayoutProps) {
         }}
       >
         <Toolbar>
-          <Typography variant="h6" noWrap fontWeight={700}>
+          <Typography variant="h6" noWrap fontWeight={700} sx={{ flexGrow: 1 }}>
             Game Library
           </Typography>
         </Toolbar>
@@ -99,6 +111,18 @@ function AppLayout({ children }: AppLayoutProps) {
           sx={{ zIndex: (theme) => theme.zIndex.drawer - 1 }}
         >
           <Toolbar>
+            {isMobile && (
+              <Tooltip title="Open navigation">
+                <IconButton
+                  edge="start"
+                  onClick={() => setMobileDrawerOpen(true)}
+                  sx={{ mr: 1 }}
+                  aria-label="Open navigation"
+                >
+                  <MenuIcon />
+                </IconButton>
+              </Tooltip>
+            )}
             <Typography variant="h6" sx={{ flexGrow: 1 }} />
             <Tooltip title="Import from Steam">
               <IconButton onClick={() => setImportOpen(true)}>
@@ -118,7 +142,12 @@ function AppLayout({ children }: AppLayoutProps) {
           </Toolbar>
         </AppBar>
 
-        <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: 'auto' }}>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 }, overflow: 'auto',
+          }}
+        >
           {children}
         </Box>
       </Box>

@@ -73,7 +73,12 @@ function StoresPage() {
   return (
     <Box>
       <Box sx={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', md: 'center' },
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: 1.5,
+        mb: 2,
       }}
       >
         <Typography variant="h5" fontWeight={600}>
