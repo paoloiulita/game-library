@@ -5,58 +5,42 @@ import {
   useContext,
   useMemo,
   useReducer,
+  useEffect,
 } from 'react';
 
 import { STORAGE_KEYS } from '../config/sheets';
-import { requestAccessToken, revokeAccessToken } from '../services/googleAuth';
+import {
+  getSession, onAuthStateChange, signInWithGoogle, signOut as supabaseSignOut,
+} from '../services/supabaseAuth';
 import type { AppConfig } from '../types/entities';
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
-interface AuthToken {
-  token: string;
-  expiry: number; // ms since epoch
-}
-
 interface AppState {
   config: AppConfig | null;
-  auth: AuthToken | null;
+  auth: import('@supabase/supabase-js').Session | null;
   isSigningIn: boolean;
   error: string | null;
 }
 
 type AppAction =
   | { type: 'SAVE_CONFIG'; payload: AppConfig }
-  | { type: 'SET_AUTH'; payload: AuthToken }
+  | { type: 'SET_AUTH'; payload: AppState['auth'] }
   | { type: 'CLEAR_AUTH' }
   | { type: 'SET_SIGNING_IN'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'CLEAR_ERROR' };
 
 const loadConfigFromStorage = (): AppConfig | null => {
-  const clientId = localStorage.getItem(STORAGE_KEYS.CLIENT_ID);
-  const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-  if (clientId && spreadsheetId) {
-    const steamApiKey = localStorage.getItem(STORAGE_KEYS.STEAM_API_KEY) ?? undefined;
-    return { clientId, spreadsheetId, steamApiKey };
-  }
-  return null;
-};
-
-const loadAuthFromStorage = (): AuthToken | null => {
-  const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-  const expiry = localStorage.getItem(STORAGE_KEYS.AUTH_EXPIRY);
-  if (token && expiry && Date.now() < Number(expiry)) {
-    return { token, expiry: Number(expiry) };
-  }
-  return null;
+  const steamApiKey = localStorage.getItem(STORAGE_KEYS.STEAM_API_KEY) ?? undefined;
+  return steamApiKey ? { steamApiKey } : null;
 };
 
 const initialState: AppState = {
   config: loadConfigFromStorage(),
-  auth: loadAuthFromStorage(),
+  auth: null,
   isSigningIn: false,
   error: null,
 };
@@ -92,8 +76,8 @@ interface AppContextValue {
   isAuthenticated: boolean;
   saveConfig: (config: AppConfig) => void;
   signIn: () => Promise<void>;
-  signOut: () => void;
-  /** Returns a valid access token, requesting a new one if the current has expired. */
+  signOut: () => Promise<void>;
+  /** Returns the current Supabase access token. */
   getToken: () => Promise<string>;
   clearError: () => void;
 }
@@ -111,9 +95,33 @@ interface AppProviderProps {
 function AppProvider({ children }: AppProviderProps) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  useEffect(() => {
+    let active = true;
+
+    getSession()
+      .then((session) => {
+        if (active) dispatch({ type: 'SET_AUTH', payload: session });
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          dispatch({
+            type: 'SET_ERROR',
+            payload: err instanceof Error ? err.message : 'Failed to restore session.',
+          });
+        }
+      });
+
+    const unsubscribe = onAuthStateChange((session) => {
+      if (active) dispatch({ type: 'SET_AUTH', payload: session });
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
   const saveConfig = useCallback((config: AppConfig): void => {
-    localStorage.setItem(STORAGE_KEYS.CLIENT_ID, config.clientId);
-    localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, config.spreadsheetId);
     if (config.steamApiKey) {
       localStorage.setItem(STORAGE_KEYS.STEAM_API_KEY, config.steamApiKey);
     } else {
@@ -123,45 +131,27 @@ function AppProvider({ children }: AppProviderProps) {
   }, []);
 
   const signIn = useCallback(async (): Promise<void> => {
-    if (!state.config) {
-      dispatch({ type: 'SET_ERROR', payload: 'No configuration found. Please set up the app first.' });
-      return;
-    }
     dispatch({ type: 'SET_SIGNING_IN', payload: true });
     try {
-      const authToken = await requestAccessToken(state.config.clientId);
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authToken.token);
-      localStorage.setItem(STORAGE_KEYS.AUTH_EXPIRY, String(authToken.expiry));
-      dispatch({ type: 'SET_AUTH', payload: authToken });
+      await signInWithGoogle();
     } catch (err) {
       dispatch({
         type: 'SET_ERROR',
         payload: err instanceof Error ? err.message : 'Authentication failed.',
       });
     }
-  }, [state.config]);
+  }, []);
 
-  const signOut = useCallback((): void => {
-    if (state.auth) {
-      revokeAccessToken(state.auth.token);
-    }
-    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.AUTH_EXPIRY);
+  const signOut = useCallback(async (): Promise<void> => {
+    await supabaseSignOut();
     dispatch({ type: 'CLEAR_AUTH' });
-  }, [state.auth]);
+  }, []);
 
   const getToken = useCallback(async (): Promise<string> => {
-    if (state.auth && Date.now() < state.auth.expiry) {
-      return state.auth.token;
-    }
-    // Token expired – request a new one (requires user interaction)
-    if (!state.config) throw new Error('Not configured.');
-    const authToken = await requestAccessToken(state.config.clientId);
-    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authToken.token);
-    localStorage.setItem(STORAGE_KEYS.AUTH_EXPIRY, String(authToken.expiry));
-    dispatch({ type: 'SET_AUTH', payload: authToken });
-    return authToken.token;
-  }, [state.auth, state.config]);
+    const session = state.auth ?? await getSession();
+    if (!session) throw new Error('Not authenticated.');
+    return session.access_token;
+  }, [state.auth]);
 
   const clearError = useCallback((): void => {
     dispatch({ type: 'CLEAR_ERROR' });
