@@ -57,3 +57,116 @@ export const getRelations = async (): Promise<GameStoreRelation[]> => {
     storeId: row.StoreID as string,
   }));
 };
+
+export const createGame = async (game: Game): Promise<void> => {
+  const { error } = await supabase.from('games').insert({
+    ID: game.id,
+    Title: game.title,
+    State: game.state,
+    IsWishlist: game.isWishlist,
+  });
+
+  if (error) throw error;
+};
+
+export const createGames = async (games: Game[]): Promise<void> => {
+  if (games.length === 0) return;
+
+  const { error } = await supabase.from('games').insert(
+    games.map((game) => ({
+      ID: game.id,
+      Title: game.title,
+      State: game.state,
+      IsWishlist: game.isWishlist,
+    })),
+  );
+
+  if (error) throw error;
+};
+
+export const updateGame = async (game: Game): Promise<void> => {
+  const { error } = await supabase
+    .from('games')
+    .update({
+      Title: game.title,
+      State: game.state,
+      IsWishlist: game.isWishlist,
+    })
+    .eq('ID', game.id);
+
+  if (error) throw error;
+};
+
+export const deleteGame = async (gameId: string): Promise<void> => {
+  const { error } = await supabase.from('games').delete().eq('ID', gameId);
+
+  if (error) throw error;
+};
+
+export const createStore = async (store: Store): Promise<void> => {
+  const { error } = await supabase.from('stores').insert({
+    ID: store.id,
+    Name: store.name,
+  });
+
+  if (error) throw error;
+};
+
+export const updateStore = async (store: Store): Promise<void> => {
+  const { error } = await supabase
+    .from('stores')
+    .update({ Name: store.name })
+    .eq('ID', store.id);
+
+  if (error) throw error;
+};
+
+export const deleteStore = async (storeId: string): Promise<void> => {
+  const { error } = await supabase.from('stores').delete().eq('ID', storeId);
+
+  if (error) throw error;
+};
+
+export const createRelation = async (relation: GameStoreRelation): Promise<void> => {
+  const { error } = await supabase.from('game_store').insert({
+    GameID: relation.gameId,
+    StoreID: relation.storeId,
+  });
+
+  if (error) throw error;
+};
+
+export const createRelations = async (relations: GameStoreRelation[]): Promise<void> => {
+  if (relations.length === 0) return;
+
+  const { error } = await supabase.from('game_store').insert(
+    relations.map((relation) => ({
+      GameID: relation.gameId,
+      StoreID: relation.storeId,
+    })),
+  );
+
+  if (error) throw error;
+};
+
+export const deleteRelation = async (gameId: string, storeId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('game_store')
+    .delete()
+    .eq('GameID', gameId)
+    .eq('StoreID', storeId);
+
+  if (error) throw error;
+};
+
+export const deleteRelationsForGame = async (gameId: string): Promise<void> => {
+  const { error } = await supabase.from('game_store').delete().eq('GameID', gameId);
+
+  if (error) throw error;
+};
+
+export const deleteRelationsForStore = async (storeId: string): Promise<void> => {
+  const { error } = await supabase.from('game_store').delete().eq('StoreID', storeId);
+
+  if (error) throw error;
+};
