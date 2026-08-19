@@ -4,23 +4,23 @@ import {
 
 import { useAppContext } from '../context/AppContext';
 import {
-  createGame as apiCreateGame,
-  createGames as apiCreateGames,
-  createRelation,
-  createRelations as apiCreateRelations,
-  createStore as apiCreateStore,
-  deleteGame as apiDeleteGame,
-  deleteRelationsForGame,
-  deleteRelationsForStore,
-  deleteStore as apiDeleteStore,
   getStatisticsHistory,
-  updateGame as apiUpdateGame,
-  updateStore as apiUpdateStore,
 } from '../services/sheetsApi';
 import {
+  createGame as createSupabaseGame,
+  createGames as createSupabaseGames,
+  createRelation as createSupabaseRelation,
+  createRelations as createSupabaseRelations,
+  createStore as createSupabaseStore,
+  deleteGame as deleteSupabaseGame,
+  deleteRelationsForGame as deleteSupabaseRelationsForGame,
+  deleteRelationsForStore as deleteSupabaseRelationsForStore,
+  deleteStore as deleteSupabaseStore,
   getGames as getSupabaseGames,
   getRelations as getSupabaseRelations,
   getStores as getSupabaseStores,
+  updateGame as updateSupabaseGame,
+  updateStore as updateSupabaseStore,
 } from '../services/supabaseRepository';
 import type {
   Game, GameState, GameStoreRelation, StatisticsEntry, Store,
@@ -198,86 +198,81 @@ function useSheetData(): UseSheetDataReturn {
   const createGame = useCallback(
     async (title: string, gameState: GameState, storeIds: string[]): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
         const newGame: Game = {
           id: crypto.randomUUID(),
           title,
           state: gameState,
           isWishlist: false,
         };
-        await apiCreateGame(spreadsheetId, newGame, token);
+        await createSupabaseGame(newGame);
         await Promise.all(
           storeIds.map((storeId) =>
-            createRelation(spreadsheetId, { gameId: newGame.id, storeId }, token)),
+            createSupabaseRelation({ gameId: newGame.id, storeId })),
         );
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   const createWishlistGame = useCallback(
     async (title: string, storeIds: string[]): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
         const newGame: Game = {
           id: crypto.randomUUID(),
           title,
           state: 'Not Yet Played',
           isWishlist: true,
         };
-        await apiCreateGame(spreadsheetId, newGame, token);
+        await createSupabaseGame(newGame);
         await Promise.all(
           storeIds.map((storeId) =>
-            createRelation(spreadsheetId, { gameId: newGame.id, storeId }, token)),
+            createSupabaseRelation({ gameId: newGame.id, storeId })),
         );
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   const updateGame = useCallback(
     async (game: Game, newStoreIds: string[]): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
-        await apiUpdateGame(spreadsheetId, game, token);
+        await updateSupabaseGame(game);
         // Replace all relations: delete then re-create
-        await deleteRelationsForGame(spreadsheetId, game.id, token);
+        await deleteSupabaseRelationsForGame(game.id);
         await Promise.all(
           newStoreIds.map((storeId) =>
-            createRelation(spreadsheetId, { gameId: game.id, storeId }, token)),
+            createSupabaseRelation({ gameId: game.id, storeId })),
         );
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   const deleteGame = useCallback(
     async (gameId: string): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
-        await deleteRelationsForGame(spreadsheetId, gameId, token);
-        await apiDeleteGame(spreadsheetId, gameId, token);
+        await deleteSupabaseRelationsForGame(gameId);
+        await deleteSupabaseGame(gameId);
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   const markAsBought = useCallback(
     async (gameId: string, purchasedStoreIds: string[]): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
         const game = data.games.find((g) => g.id === gameId);
         if (!game) throw new Error(`Game with id "${gameId}" not found.`);
         const updatedGame: Game = { ...game, isWishlist: false, state: 'Not Yet Played' };
-        await apiUpdateGame(spreadsheetId, updatedGame, token);
-        await deleteRelationsForGame(spreadsheetId, gameId, token);
+        await updateSupabaseGame(updatedGame);
+        await deleteSupabaseRelationsForGame(gameId);
         await Promise.all(
           purchasedStoreIds.map((storeId) =>
-            createRelation(spreadsheetId, { gameId, storeId }, token)),
+            createSupabaseRelation({ gameId, storeId })),
         );
       });
     },
-    [spreadsheetId, getToken, operate, data.games],
+    [operate, data.games],
   );
 
   // ---------------------------------------------------------------------------
@@ -287,33 +282,30 @@ function useSheetData(): UseSheetDataReturn {
   const createStore = useCallback(
     async (name: string): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
         const newStore: Store = { id: crypto.randomUUID(), name };
-        await apiCreateStore(spreadsheetId, newStore, token);
+        await createSupabaseStore(newStore);
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   const updateStore = useCallback(
     async (store: Store): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
-        await apiUpdateStore(spreadsheetId, store, token);
+        await updateSupabaseStore(store);
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   const deleteStore = useCallback(
     async (storeId: string): Promise<void> => {
       await operate(async () => {
-        const token = await getToken();
-        await deleteRelationsForStore(spreadsheetId, storeId, token);
-        await apiDeleteStore(spreadsheetId, storeId, token);
+        await deleteSupabaseRelationsForStore(storeId);
+        await deleteSupabaseStore(storeId);
       });
     },
-    [spreadsheetId, getToken, operate],
+    [operate],
   );
 
   // ---------------------------------------------------------------------------
@@ -363,13 +355,11 @@ function useSheetData(): UseSheetDataReturn {
       params: BatchImportParams,
       onProgress?: (pct: number) => void,
     ): Promise<BatchImportResult> => {
-      const token = await getToken();
-
       // Find or create the "Steam" store
       let steamStore = data.stores.find((s) => s.name.toLowerCase() === 'steam') ?? null;
       if (!steamStore) {
         const newStore: Store = { id: crypto.randomUUID(), name: 'Steam' };
-        await apiCreateStore(spreadsheetId, newStore, token);
+        await createSupabaseStore(newStore);
         steamStore = newStore;
       }
       const steamStoreId = steamStore.id;
@@ -385,7 +375,7 @@ function useSheetData(): UseSheetDataReturn {
       }));
 
       // Write all new games in one API call
-      await apiCreateGames(spreadsheetId, newGames, token);
+      await createSupabaseGames(newGames);
 
       onProgress?.(50);
 
@@ -407,7 +397,7 @@ function useSheetData(): UseSheetDataReturn {
       }));
 
       // Write all relations in one API call
-      await apiCreateRelations(spreadsheetId, [...mergeRelations, ...newGameRelations], token);
+      await createSupabaseRelations([...mergeRelations, ...newGameRelations]);
 
       onProgress?.(90);
 
@@ -420,7 +410,7 @@ function useSheetData(): UseSheetDataReturn {
         autoMerged: params.toAutoMerge.length,
       };
     },
-    [spreadsheetId, getToken, data.stores, data.relations, refresh],
+    [data.stores, data.relations, refresh],
   );
 
   return {
