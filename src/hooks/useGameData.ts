@@ -34,7 +34,7 @@ export interface BatchImportResult {
   autoMerged: number;
 }
 
-interface SheetDataState {
+interface GameDataState {
   games: Game[];
   stores: Store[];
   relations: GameStoreRelation[];
@@ -45,7 +45,7 @@ interface SheetDataState {
   error: string | null;
 }
 
-export interface UseSheetDataReturn extends SheetDataState {
+export interface UseGameDataReturn extends GameDataState {
   /** All owned (non-wishlist) games. */
   ownedGames: Game[];
   /** All wishlisted games. */
@@ -73,7 +73,7 @@ export interface UseSheetDataReturn extends SheetDataState {
   clearError: () => void;
 }
 
-const initialState: SheetDataState = {
+const initialState: GameDataState = {
   games: [],
   stores: [],
   relations: [],
@@ -84,8 +84,8 @@ const initialState: SheetDataState = {
   error: null,
 };
 
-function useSheetData(): UseSheetDataReturn {
-  const [data, setData] = useState<SheetDataState>(initialState);
+function useGameData(): UseGameDataReturn {
+  const [data, setData] = useState<GameDataState>(initialState);
 
   // ---------------------------------------------------------------------------
   // Data loading
@@ -419,4 +419,4 @@ function useSheetData(): UseSheetDataReturn {
   };
 }
 
-export default useSheetData;
+export default useGameData;

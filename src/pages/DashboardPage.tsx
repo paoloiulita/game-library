@@ -22,7 +22,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { useSheetDataContext } from '../context/SheetDataContext';
+import { useGameDataContext } from '../context/GameDataContext';
 import type { StatisticsEntry } from '../types/entities';
 
 // ---------------------------------------------------------------------------
@@ -234,7 +234,7 @@ function buildHistoryCharts(history: StatisticsEntry[]) {
 function DashboardPage() {
   const {
     ownedGames, isLoading, error, clearError, statisticsHistory,
-  } = useSheetDataContext();
+  } = useGameDataContext();
 
   const finished = ownedGames.filter((g) => g.state === 'Finished').length;
   const putAside = ownedGames.filter((g) => g.state === 'Put Aside').length;

@@ -16,10 +16,7 @@ import {
 } from '@mui/material';
 import { type ReactNode, useState } from 'react';
 
-import { useAppContext } from '../context/AppContext';
-import { useSheetDataContext } from '../context/SheetDataContext';
-import { appendStatisticsEntry } from '../services/sheetsApi';
-import type { StatisticsEntry } from '../types/entities';
+import { useGameDataContext } from '../context/GameDataContext';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,16 +62,11 @@ function DiffCell({ value, isPercent = false }: DiffCellProps) {
 // ---------------------------------------------------------------------------
 
 function StatisticsPage() {
-  const { state: appState, getToken } = useAppContext();
   const {
-    ownedGames,
     isLoading: gamesLoading,
     statisticsHistory,
     isHistoryLoading,
-    refreshHistory,
-  } = useSheetDataContext();
-  const spreadsheetId = appState.config?.spreadsheetId ?? '';
-
+  } = useGameDataContext();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,46 +75,8 @@ function StatisticsPage() {
   // ---------------------------------------------------------------------------
 
   const handleGenerateSnapshot = async (): Promise<void> => {
-    setIsGenerating(true);
-    setError(null);
-    try {
-      const token = await getToken();
-
-      const finished = ownedGames.filter((g) => g.state === 'Finished').length;
-      const putAside = ownedGames.filter((g) => g.state === 'Put Aside').length;
-      const notYetPlayed = ownedGames.filter((g) => g.state === 'Not Yet Played').length;
-      const total = ownedGames.length;
-      const percentNotYetPlayed = total > 0
-        ? Math.round((notYetPlayed / total) * 1000) / 10
-        : 0;
-
-      // Most recent stored snapshot is the last entry (chronological order)
-      const prev = statisticsHistory.length > 0
-        ? statisticsHistory[statisticsHistory.length - 1]
-        : null;
-
-      const entry: StatisticsEntry = {
-        date: new Date().toISOString(),
-        finished,
-        diffFinished: prev !== null ? finished - prev.finished : null,
-        putAside,
-        diffPutAside: prev !== null ? putAside - prev.putAside : null,
-        notYetPlayed,
-        diffNotYetPlayed: prev !== null ? notYetPlayed - prev.notYetPlayed : null,
-        total,
-        percentNotYetPlayed,
-        diffPercentNotYetPlayed: prev !== null
-          ? Math.round((percentNotYetPlayed - prev.percentNotYetPlayed) * 10) / 10
-          : null,
-      };
-
-      await appendStatisticsEntry(spreadsheetId, entry, token);
-      await refreshHistory();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate snapshot.');
-    } finally {
-      setIsGenerating(false);
-    }
+    setIsGenerating(false);
+    setError('Statistics snapshots are temporarily unavailable.');
   };
 
   // ---------------------------------------------------------------------------

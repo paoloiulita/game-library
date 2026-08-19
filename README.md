@@ -1,7 +1,7 @@
 # Game Library Manager
 
 A personal video game collection tracker that lives entirely in your browser.
-Your data is stored in a **Google Spreadsheet** you own — no server, no database, no subscription.
+Your data is stored in **Supabase**, with each authenticated user isolated by Row Level Security.
 
 ---
 
@@ -16,45 +16,17 @@ Your data is stored in a **Google Spreadsheet** you own — no server, no databa
 - **Games** — track every title with one of three states: *Finished*, *Put Aside*, *Not Yet Played*
 - **Stores** — organise your collection by platform or store; many-to-many relationships supported
 - **Dashboard** — KPI cards, state distribution pie charts, and time-series charts of your backlog over time
-- **Statistics** — manual snapshots of your collection counts with delta indicators between entries
+- **Statistics** — currently hidden while the feature is reviewed
 - **Alphabetical index** — jump to any letter instantly in large collections
 
 ### First-time setup
 
-#### 1 — Create a Google Cloud project
+1. Create or open a Supabase project.
+2. In **Project Settings → Data API**, copy the project URL and publishable key.
+3. In **Authentication → Providers**, enable Google and configure its OAuth credentials.
+4. Open the app and sign in with Google.
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project (or select an existing one).
-2. Navigate to **APIs & Services → Library**, search for **Google Sheets API** and click **Enable**.
-
-#### 2 — Configure the OAuth consent screen
-
-1. Go to **APIs & Services → OAuth consent screen**.
-2. Choose **External** as the user type (unless you have a Google Workspace organisation).
-3. Fill in the required fields (app name, support email).
-4. Under **Scopes**, add `https://www.googleapis.com/auth/spreadsheets`.
-5. Under **Test users**, add your own Google account.
-6. Save and continue.
-
-#### 3 — Create an OAuth 2.0 Client ID
-
-1. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-2. Set the application type to **Web application**.
-3. Under **Authorised JavaScript origins**, add `https://paoloiulita.github.io`.
-4. Click **Create** and copy the **Client ID** (format: `xxxxxx.apps.googleusercontent.com`).
-
-> No redirect URIs are needed — the app uses the OAuth 2.0 token model (implicit flow).
-
-#### 4 — Create a Google Spreadsheet
-
-1. Go to [sheets.google.com](https://sheets.google.com) and create a blank spreadsheet.
-2. Copy the spreadsheet's URL (or just the ID — the long string between `/d/` and `/edit` in the URL).
-
-> The app will automatically create all required sheets and headers on first sign-in.
-
-#### 5 — Open the app
-
-Visit [https://paoloiulita.github.io/game-library/](https://paoloiulita.github.io/game-library/).
-On first load a setup dialog appears — paste your **Client ID** and **Spreadsheet URL**, then click **Sign In with Google**.
+Visit [https://paoloiulita.github.io/game-library/](https://paoloiulita.github.io/game-library/). On first load, sign in with Google.
 
 ---
 
@@ -70,18 +42,18 @@ On first load a setup dialog appears — paste your **Client ID** and **Spreadsh
 | Charts | Recharts | Composable, React-native charting |
 | Routing | React Router v7 | File-less SPA routing |
 | State | React Context + `useReducer` / `useState` | No external state library needed at this scale |
-| Backend | Google Sheets API v4 (REST) | Zero infrastructure — user owns their data |
-| Auth | Google Identity Services (token model) | Browser-only OAuth 2.0, no server round-trip |
+| Backend | Supabase Database + JavaScript SDK | Managed Postgres with Row Level Security |
+| Auth | Supabase Auth | Browser OAuth with persistent sessions |
 | Linting | ESLint 8 + Airbnb style guide | Strict, consistent code style |
 | Pre-commit | Husky + lint-staged | Blocks commits that fail lint or type-check |
 
 ### Key architectural decisions
 
-**Google Sheets as a database** — All persistence is handled through direct REST calls to the Sheets API v4. The app creates and manages four sheet tabs: `Games`, `Stores`, `Game_Store_Relations`, and `Statistics_History`.
+**Supabase as a database** — Core persistence uses the `games`, `stores`, and `game_store` tables. Row Level Security scopes records to the authenticated user.
 
-**Client-side only** — There is no backend server. Authentication tokens are held in memory (never written to `localStorage`) and refreshed transparently via the GIS token model.
+**Client-side only** — The browser uses the Supabase publishable key. The database enforces tenant isolation through RLS; service-role credentials never belong in the frontend.
 
-**Single context for shared data** — `SheetDataContext` wraps `useSheetData` at the authenticated layout level. All four pages consume data from this single context, so navigating between pages never triggers a re-fetch.
+**Single context for shared data** — `GameDataContext` wraps `useGameData` at the authenticated layout level. All four pages consume data from this single context, so navigating between pages never triggers a re-fetch.
 
 **Batch deletes sorted descending** — When deleting multiple rows from Sheets (e.g. all relations for a game), row indices are sorted in descending order before the batch request so that earlier deletions don't invalidate later indices.
 
@@ -94,20 +66,21 @@ src/
 │   ├── Layout/         # AppLayout (sidebar + app bar)
 │   └── Stores/         # StoreFormDialog, DeleteStoreDialog
 ├── config/
-│   └── sheets.ts       # Sheet names, headers, API constants
+│   └── storage.ts      # Browser storage keys
 ├── context/
-│   ├── AppContext.tsx   # Auth state (config, token, sign-in/out)
-│   └── SheetDataContext.tsx  # Shared data layer (games, stores, history)
+│   ├── AppContext.tsx   # Supabase session and sign-in/out
+│   └── GameDataContext.tsx   # Shared data layer (games, stores, history)
 ├── hooks/
-│   └── useSheetData.ts # Data fetching, CRUD operations, derived helpers
+│   └── useGameData.ts  # Data fetching, CRUD operations, derived helpers
 ├── pages/
 │   ├── DashboardPage.tsx
 │   ├── GamesPage.tsx
 │   ├── StatisticsPage.tsx
 │   └── StoresPage.tsx
 ├── services/
-│   ├── googleAuth.ts   # GIS token client
-│   └── sheetsApi.ts    # All Sheets REST API calls
+│   ├── supabaseAuth.ts       # Supabase Auth wrapper
+│   ├── supabaseClient.ts     # Typed Supabase client
+│   └── supabaseRepository.ts # Core database operations
 └── types/
     ├── entities.ts     # Domain types (Game, Store, StatisticsEntry, …)
     └── google.d.ts     # GIS ambient declarations
@@ -117,10 +90,11 @@ src/
 
 ```bash
 npm install
+printf 'VITE_SUPABASE_URL=https://your-project.supabase.co\nVITE_SUPABASE_ANON_KEY=your-public-key\n' > .env.local
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). Follow the same first-time setup steps above, adding `http://localhost:5173` as an additional **Authorised JavaScript origin** in your OAuth client.
+Open [http://localhost:5173](http://localhost:5173). Add the local callback URL to the allowed redirect URLs in Supabase Auth and its Google provider configuration.
 
 ### Available commands
 

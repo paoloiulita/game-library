@@ -80,14 +80,11 @@ function reducer(state: AppState, action: AppAction): AppState {
 
 interface AppContextValue {
   state: AppState;
-  isConfigured: boolean;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   saveConfig: (config: AppConfig) => void;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
-  /** Returns the current Supabase access token. */
-  getToken: () => Promise<string>;
   clearError: () => void;
 }
 
@@ -156,12 +153,6 @@ function AppProvider({ children }: AppProviderProps) {
     dispatch({ type: 'CLEAR_AUTH' });
   }, []);
 
-  const getToken = useCallback(async (): Promise<string> => {
-    const session = state.auth ?? await getSession();
-    if (!session) throw new Error('Not authenticated.');
-    return session.access_token;
-  }, [state.auth]);
-
   const clearError = useCallback((): void => {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
@@ -169,16 +160,14 @@ function AppProvider({ children }: AppProviderProps) {
   const value = useMemo<AppContextValue>(
     () => ({
       state,
-      isConfigured: state.config !== null,
       isAuthenticated: state.auth !== null,
       isAuthLoading: state.isAuthLoading,
       saveConfig,
       signIn,
       signOut,
-      getToken,
       clearError,
     }),
-    [state, saveConfig, signIn, signOut, getToken, clearError],
+    [state, saveConfig, signIn, signOut, clearError],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

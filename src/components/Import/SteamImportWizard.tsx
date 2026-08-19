@@ -24,7 +24,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { useAppContext } from '../../context/AppContext';
-import { useSheetDataContext } from '../../context/SheetDataContext';
+import { useGameDataContext } from '../../context/GameDataContext';
 import { fetchOwnedGames, resolveSteamId } from '../../services/steamApi';
 import {
   categorizeSteamGames,
@@ -86,7 +86,7 @@ interface SteamImportWizardProps {
 function SteamImportWizard({ open, onClose }: SteamImportWizardProps) {
   const { state: appState } = useAppContext();
   const steamApiKey = appState.config?.steamApiKey ?? '';
-  const { games, batchImport } = useSheetDataContext();
+  const { games, batchImport } = useGameDataContext();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
 
   // Reset all state whenever the dialog opens

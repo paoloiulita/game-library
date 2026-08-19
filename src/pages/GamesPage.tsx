@@ -33,7 +33,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useMemo, useState } from 'react';
 
 import GameFormDialog from '../components/Games/GameFormDialog';
-import { useSheetDataContext } from '../context/SheetDataContext';
+import { useGameDataContext } from '../context/GameDataContext';
 import { type Game, type GameState } from '../types/entities';
 
 const LETTERS = [
@@ -64,7 +64,7 @@ function GamesPage() {
     updateGame,
     deleteGame,
     clearError,
-  } = useSheetDataContext();
+  } = useGameDataContext();
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Game | null>(null);

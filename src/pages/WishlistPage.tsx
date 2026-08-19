@@ -31,7 +31,7 @@ import { useMemo, useState } from 'react';
 
 import MarkAsBoughtDialog from '../components/Wishlist/MarkAsBoughtDialog';
 import WishlistFormDialog from '../components/Wishlist/WishlistFormDialog';
-import { useSheetDataContext } from '../context/SheetDataContext';
+import { useGameDataContext } from '../context/GameDataContext';
 import type { Game } from '../types/entities';
 
 function WishlistPage() {
@@ -47,7 +47,7 @@ function WishlistPage() {
     deleteGame,
     markAsBought,
     clearError,
-  } = useSheetDataContext();
+  } = useGameDataContext();
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Game | null>(null);

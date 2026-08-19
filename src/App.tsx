@@ -8,7 +8,7 @@ import {
 import AppLayout from './components/Layout/AppLayout';
 import SetupModal from './components/Setup/SetupModal';
 import AppProvider, { useAppContext } from './context/AppContext';
-import { SheetDataProvider } from './context/SheetDataContext';
+import { GameDataProvider } from './context/GameDataContext';
 import DashboardPage from './pages/DashboardPage';
 import GamesPage from './pages/GamesPage';
 import StatisticsPage from './pages/StatisticsPage';
@@ -33,7 +33,7 @@ function AppContent() {
   }
 
   return (
-    <SheetDataProvider>
+    <GameDataProvider>
       <AppLayout>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -45,7 +45,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppLayout>
-    </SheetDataProvider>
+    </GameDataProvider>
   );
 }
 
