@@ -2,10 +2,6 @@ import {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 
-import { useAppContext } from '../context/AppContext';
-import {
-  getStatisticsHistory,
-} from '../services/sheetsApi';
 import {
   createGame as createSupabaseGame,
   createGames as createSupabaseGames,
@@ -89,9 +85,6 @@ const initialState: SheetDataState = {
 };
 
 function useSheetData(): UseSheetDataReturn {
-  const { state: appState, getToken } = useAppContext();
-  const spreadsheetId = appState.config?.spreadsheetId ?? '';
-
   const [data, setData] = useState<SheetDataState>(initialState);
 
   // ---------------------------------------------------------------------------
@@ -119,16 +112,8 @@ function useSheetData(): UseSheetDataReturn {
   }, []);
 
   const refreshHistory = useCallback(async (): Promise<void> => {
-    if (!spreadsheetId) return;
-    setData((prev) => ({ ...prev, isHistoryLoading: true }));
-    try {
-      const token = await getToken();
-      const statisticsHistory = await getStatisticsHistory(spreadsheetId, token);
-      setData((prev) => ({ ...prev, statisticsHistory, isHistoryLoading: false }));
-    } catch {
-      setData((prev) => ({ ...prev, isHistoryLoading: false }));
-    }
-  }, [spreadsheetId, getToken]);
+    setData((prev) => ({ ...prev, statisticsHistory: [], isHistoryLoading: false }));
+  }, []);
 
   useEffect(() => {
     let active = true;
