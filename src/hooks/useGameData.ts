@@ -84,6 +84,21 @@ const initialState: GameDataState = {
   error: null,
 };
 
+interface CoreDataLoadResult {
+  games: Game[];
+  stores: Store[];
+  relations: GameStoreRelation[];
+}
+
+const loadCoreData = async (): Promise<CoreDataLoadResult> => {
+  const [games, stores, relations] = await Promise.all([
+    getSupabaseGames(),
+    getSupabaseStores(),
+    getSupabaseRelations(),
+  ]);
+  return { games, stores, relations };
+};
+
 function useGameData(): UseGameDataReturn {
   const [data, setData] = useState<GameDataState>(initialState);
 
@@ -94,13 +109,9 @@ function useGameData(): UseGameDataReturn {
   const refresh = useCallback(async (): Promise<void> => {
     setData((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const [games, stores, relations] = await Promise.all([
-        getSupabaseGames(),
-        getSupabaseStores(),
-        getSupabaseRelations(),
-      ]);
+      const result = await loadCoreData();
       setData((prev) => ({
-        ...prev, games, stores, relations, isLoading: false, isOperating: false, error: null,
+        ...prev, ...result, isLoading: false, isOperating: false, error: null,
       }));
     } catch (err) {
       setData((prev) => ({
@@ -120,16 +131,10 @@ function useGameData(): UseGameDataReturn {
 
     const load = async (): Promise<void> => {
       try {
-        const [games, stores, relations] = await Promise.all([
-          getSupabaseGames(),
-          getSupabaseStores(),
-          getSupabaseRelations(),
-        ]);
+        const result = await loadCoreData();
         if (active) {
           setData({
-            games,
-            stores,
-            relations,
+            ...result,
             statisticsHistory: [],
             isLoading: false,
             isHistoryLoading: false,

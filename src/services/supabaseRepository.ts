@@ -8,6 +8,23 @@ import {
 
 import supabase from './supabaseClient';
 
+const PAGE_SIZE = 1000;
+
+const fetchAllPages = async <T>(
+  fetchPage: (start: number, end: number) => Promise<T[]>,
+): Promise<T[]> => {
+  const fetchRemainingPages = async (pageIndex: number, rows: T[]): Promise<T[]> => {
+    const start = pageIndex * PAGE_SIZE;
+    const page = await fetchPage(start, start + PAGE_SIZE - 1);
+    const allRows = [...rows, ...page];
+    return page.length < PAGE_SIZE
+      ? allRows
+      : fetchRemainingPages(pageIndex + 1, allRows);
+  };
+
+  return fetchRemainingPages(0, []);
+};
+
 const toGameState = (state: string | null): GameState => {
   if (state && GAME_STATES.includes(state as GameState)) {
     return state as GameState;
@@ -16,13 +33,18 @@ const toGameState = (state: string | null): GameState => {
 };
 
 export const getGames = async (): Promise<Game[]> => {
-  const { data, error } = await supabase
-    .from('games')
-    .select('ID, Title, State, IsWishlist');
+  const rows = await fetchAllPages(async (start, end) => {
+    const { data, error } = await supabase
+      .from('games')
+      .select('ID, Title, State, IsWishlist')
+      .order('ID', { ascending: true })
+      .range(start, end);
 
-  if (error) throw error;
+    if (error) throw error;
+    return data;
+  });
 
-  return data.map((row) => ({
+  return rows.map((row) => ({
     id: row.ID,
     title: row.Title ?? '',
     state: toGameState(row.State),
@@ -31,28 +53,40 @@ export const getGames = async (): Promise<Game[]> => {
 };
 
 export const getStores = async (): Promise<Store[]> => {
-  const { data, error } = await supabase
-    .from('stores')
-    .select('ID, Name');
+  const rows = await fetchAllPages(async (start, end) => {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('ID, Name')
+      .order('Name', { ascending: true })
+      .order('ID', { ascending: true })
+      .range(start, end);
 
-  if (error) throw error;
+    if (error) throw error;
+    return data;
+  });
 
-  return data.map((row) => ({
+  return rows.map((row) => ({
     id: row.ID,
     name: row.Name ?? '',
   }));
 };
 
 export const getRelations = async (): Promise<GameStoreRelation[]> => {
-  const { data, error } = await supabase
-    .from('game_store')
-    .select('GameID, StoreID')
-    .not('GameID', 'is', null)
-    .not('StoreID', 'is', null);
+  const rows = await fetchAllPages(async (start, end) => {
+    const { data, error } = await supabase
+      .from('game_store')
+      .select('GameID, StoreID')
+      .not('GameID', 'is', null)
+      .not('StoreID', 'is', null)
+      .order('GameID', { ascending: true })
+      .order('StoreID', { ascending: true })
+      .range(start, end);
 
-  if (error) throw error;
+    if (error) throw error;
+    return data;
+  });
 
-  return data.map((row) => ({
+  return rows.map((row) => ({
     gameId: row.GameID as string,
     storeId: row.StoreID as string,
   }));
