@@ -8,7 +8,7 @@ import {
   useEffect,
 } from 'react';
 
-import { STORAGE_KEYS } from '../config/sheets';
+import STORAGE_KEYS from '../config/storage';
 import {
   getSession, onAuthStateChange, signInWithGoogle, signOut as supabaseSignOut,
 } from '../services/supabaseAuth';
