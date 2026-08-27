@@ -115,6 +115,20 @@ export const getStatistics = async (): Promise<StatisticsEntry[]> => {
   }));
 };
 
+export const createStatistic = async (
+  finished: number,
+  putAside: number,
+  notYetPlayed: number,
+): Promise<void> => {
+  const { error } = await supabase.from('statistics').insert({
+    Finished: finished,
+    PutAside: putAside,
+    NotYetPlayed: notYetPlayed,
+  });
+
+  if (error) throw error;
+};
+
 export const createGame = async (game: Game): Promise<void> => {
   const { error } = await supabase.from('games').insert({
     ID: game.id,
