@@ -24,16 +24,11 @@ export interface GameStoreRelation {
 }
 
 export interface StatisticsEntry {
+  id: string;
   date: string;
   finished: number;
-  diffFinished: number | null;
   putAside: number;
-  diffPutAside: number | null;
   notYetPlayed: number;
-  diffNotYetPlayed: number | null;
-  total: number;
-  percentNotYetPlayed: number;
-  diffPercentNotYetPlayed: number | null;
 }
 
 export interface AppConfig {

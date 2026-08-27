@@ -4,6 +4,7 @@ import {
   type GameState,
   type GameStoreRelation,
   type Store,
+  type StatisticsEntry,
 } from '../types/entities';
 
 import supabase from './supabaseClient';
@@ -89,6 +90,28 @@ export const getRelations = async (): Promise<GameStoreRelation[]> => {
   return rows.map((row) => ({
     gameId: row.GameID as string,
     storeId: row.StoreID as string,
+  }));
+};
+
+export const getStatistics = async (): Promise<StatisticsEntry[]> => {
+  const rows = await fetchAllPages(async (start, end) => {
+    const { data, error } = await supabase
+      .from('statistics')
+      .select('ID, CreatedAt, Finished, PutAside, NotYetPlayed')
+      .order('CreatedAt', { ascending: false })
+      .order('ID', { ascending: false })
+      .range(start, end);
+
+    if (error) throw error;
+    return data;
+  });
+
+  return rows.map((row) => ({
+    id: row.ID,
+    date: row.CreatedAt,
+    finished: row.Finished,
+    putAside: row.PutAside,
+    notYetPlayed: row.NotYetPlayed,
   }));
 };
 

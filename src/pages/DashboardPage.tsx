@@ -8,14 +8,11 @@ import {
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Legend,
   Pie,
   PieChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -180,51 +177,19 @@ function AreaSeriesChart({ title, data, color }: AreaSeriesChartProps) {
   );
 }
 
-interface DeltaBarChartProps {
-  title: string;
-  data: Array<{ label: string; value: number }>;
-}
-
-function DeltaBarChart({ title, data }: DeltaBarChartProps) {
-  return (
-    <Paper elevation={2} sx={{ p: 2 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        {title}
-      </Typography>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-          <YAxis />
-          <Tooltip />
-          <ReferenceLine y={0} stroke="#9e9e9e" />
-          <Bar dataKey="value">
-            {data.map((entry) => (
-              <Cell
-                key={entry.label}
-                fill={entry.value <= 0 ? '#2e7d32' : '#e65100'}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </Paper>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Helper: build chart series from history (chronological order)
 // ---------------------------------------------------------------------------
 
 function buildHistoryCharts(history: StatisticsEntry[]) {
-  const totalData = history.map((e) => ({ label: formatChartDate(e.date), value: e.total }));
+  const totalData = history.map((e) => ({
+    label: formatChartDate(e.date),
+    value: e.finished + e.putAside + e.notYetPlayed,
+  }));
   const backlogData = history.map((e) => ({
     label: formatChartDate(e.date), value: e.notYetPlayed,
   }));
-  const deltaData = history
-    .filter((e) => e.diffPercentNotYetPlayed !== null)
-    .map((e) => ({ label: formatChartDate(e.date), value: e.diffPercentNotYetPlayed as number }));
-  return { totalData, backlogData, deltaData };
+  return { totalData, backlogData };
 }
 
 // ---------------------------------------------------------------------------
@@ -252,7 +217,7 @@ function DashboardPage() {
     { name: 'Put Aside', value: putAside },
   ].filter((d) => d.value > 0);
 
-  const { totalData, backlogData, deltaData } = buildHistoryCharts(statisticsHistory);
+  const { totalData, backlogData } = buildHistoryCharts(statisticsHistory);
   const hasHistory = statisticsHistory.length >= 2;
 
   if (isLoading) {
@@ -315,12 +280,6 @@ function DashboardPage() {
             data={backlogData}
             color="#757575"
           />
-          {deltaData.length >= 1 && (
-            <DeltaBarChart
-              title="Backlog Change Over Time (Δ % Not Yet Played)"
-              data={deltaData}
-            />
-          )}
         </Box>
       )}
     </Box>

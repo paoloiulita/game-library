@@ -14,6 +14,7 @@ import {
   deleteStore as deleteSupabaseStore,
   getGames as getSupabaseGames,
   getRelations as getSupabaseRelations,
+  getStatistics as getSupabaseStatistics,
   getStores as getSupabaseStores,
   updateGame as updateSupabaseGame,
   updateStore as updateSupabaseStore,
@@ -123,7 +124,17 @@ function useGameData(): UseGameDataReturn {
   }, []);
 
   const refreshHistory = useCallback(async (): Promise<void> => {
-    setData((prev) => ({ ...prev, statisticsHistory: [], isHistoryLoading: false }));
+    setData((prev) => ({ ...prev, isHistoryLoading: true }));
+    try {
+      const statisticsHistory = await getSupabaseStatistics();
+      setData((prev) => ({ ...prev, statisticsHistory, isHistoryLoading: false }));
+    } catch (err) {
+      setData((prev) => ({
+        ...prev,
+        isHistoryLoading: false,
+        error: err instanceof Error ? err.message : 'Failed to load statistics.',
+      }));
+    }
   }, []);
 
   useEffect(() => {
@@ -132,10 +143,11 @@ function useGameData(): UseGameDataReturn {
     const load = async (): Promise<void> => {
       try {
         const result = await loadCoreData();
+        const statisticsHistory = await getSupabaseStatistics();
         if (active) {
           setData({
             ...result,
-            statisticsHistory: [],
+            statisticsHistory,
             isLoading: false,
             isHistoryLoading: false,
             isOperating: false,

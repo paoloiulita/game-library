@@ -1,3 +1,4 @@
+import BarChartIcon from '@mui/icons-material/BarChart';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -44,7 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Games', path: '/games', icon: <SportsEsportsIcon /> },
   { label: 'Wishlist', path: '/wishlist', icon: <BookmarkIcon /> },
   { label: 'Stores', path: '/stores', icon: <StoreIcon /> },
-  // { label: 'Statistics', path: '/statistics', icon: <BarChartIcon /> },
+  { label: 'Statistics', path: '/statistics', icon: <BarChartIcon /> },
 ];
 
 interface AppLayoutProps {
@@ -111,16 +112,16 @@ function AppLayout({ children }: AppLayoutProps) {
         >
           <Toolbar>
             {isMobile && (
-              <Tooltip title="Open navigation">
-                <IconButton
-                  edge="start"
-                  onClick={() => setMobileDrawerOpen(true)}
-                  sx={{ mr: 1 }}
-                  aria-label="Open navigation"
-                >
-                  <MenuIcon />
-                </IconButton>
-              </Tooltip>
+            <Tooltip title="Open navigation">
+              <IconButton
+                edge="start"
+                onClick={() => setMobileDrawerOpen(true)}
+                sx={{ mr: 1 }}
+                aria-label="Open navigation"
+              >
+                <MenuIcon />
+              </IconButton>
+            </Tooltip>
             )}
             <Typography variant="h6" sx={{ flexGrow: 1 }} />
             <Tooltip title="Import from Steam">
@@ -144,18 +145,22 @@ function AppLayout({ children }: AppLayoutProps) {
         <Box
           component="main"
           sx={{
-            flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 }, overflow: 'auto',
+            flexGrow: 1,
+            minWidth: 0,
+            p: { xs: 2, md: 3 },
+            overflow: 'auto',
           }}
         >
           {children}
         </Box>
       </Box>
 
-      {settingsOpen && (
-        <SetupModal />
-      )}
+      {settingsOpen && <SetupModal />}
       {importOpen && (
-        <SteamImportWizard open={importOpen} onClose={() => setImportOpen(false)} />
+      <SteamImportWizard
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+      />
       )}
     </Box>
   );

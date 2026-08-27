@@ -1,6 +1,33 @@
 export type Database = {
   public: {
     Tables: {
+      statistics: {
+        Row: {
+          ID: string;
+          user_id: string;
+          Finished: number;
+          PutAside: number;
+          NotYetPlayed: number;
+          CreatedAt: string;
+        };
+        Insert: {
+          ID?: string;
+          user_id?: string;
+          Finished?: number;
+          PutAside?: number;
+          NotYetPlayed?: number;
+          CreatedAt?: string;
+        };
+        Update: {
+          ID?: string;
+          user_id?: string;
+          Finished?: number;
+          PutAside?: number;
+          NotYetPlayed?: number;
+          CreatedAt?: string;
+        };
+        Relationships: [];
+      };
       games: {
         Row: {
           ID: string;
